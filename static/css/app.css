@@ -1396,3 +1396,56 @@ body, html {
     color: #ffffff;
     background: #2d2d2d;
 }
+
+
+/* PROJECTS FILTER CONTEXT MENU MATCHING SCREENSHOT 1 */
+.agy-context-menu {
+    position: fixed;
+    z-index: 1500;
+    background: #1c1c1c;
+    border: 1px solid var(--border-main);
+    border-radius: 12px;
+    padding: 6px 0;
+    min-width: 210px;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.7);
+    font-size: 13px;
+    backdrop-filter: blur(8px);
+    animation: modalPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ctx-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    padding: 6px 14px 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.ctx-item {
+    display: flex;
+    align-items: center;
+    padding: 7px 14px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+.ctx-item:hover {
+    background: #282828;
+    color: #ffffff;
+}
+.ctx-item.active {
+    color: #ffffff;
+    font-weight: 600;
+}
+.ctx-check {
+    width: 18px;
+    font-size: 12px;
+    color: var(--cyan-accent);
+}
+
+.ctx-divider {
+    height: 1px;
+    background: var(--border-main);
+    margin: 4px 0;
+}

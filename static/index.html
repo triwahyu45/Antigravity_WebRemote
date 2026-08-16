@@ -210,5 +210,57 @@
         </div>
     </div>
 
+
+    <!-- Projects Filter & Sort Dropdown Menu matching Screenshot 1 -->
+    <div id="projects-filter-menu" class="agy-context-menu" style="display: none;">
+        <div class="ctx-section-label">Group By</div>
+        <div class="ctx-item active" data-action="group-project"><span class="ctx-check">✓</span> Project</div>
+        <div class="ctx-item" data-action="group-workspace"><span class="ctx-check"></span> Workspace</div>
+        <div class="ctx-item" data-action="group-status"><span class="ctx-check"></span> Status</div>
+        <div class="ctx-item" data-action="group-none"><span class="ctx-check"></span> None</div>
+        
+        <div class="ctx-divider"></div>
+        <div class="ctx-section-label">Sort Conversations</div>
+        <div class="ctx-item active" data-action="sort-updated"><span class="ctx-check">✓</span> Last Updated</div>
+        <div class="ctx-item" data-action="sort-prompt"><span class="ctx-check"></span> Last Prompt</div>
+        <div class="ctx-item" data-action="sort-alpha"><span class="ctx-check"></span> Alphabetical (A-Z)</div>
+        <div class="ctx-item" data-action="sort-date"><span class="ctx-check"></span> Date Added</div>
+        
+        <div class="ctx-divider"></div>
+        <div class="ctx-section-label">Subtitles</div>
+        <div class="ctx-item active" data-action="sub-worktree"><span class="ctx-check">✓</span> Worktree</div>
+        <div class="ctx-item" data-action="sub-none"><span class="ctx-check"></span> No Subtitle</div>
+        
+        <div class="ctx-divider"></div>
+        <div class="ctx-item" data-action="filter-submenu">Filter <i class="fas fa-chevron-right" style="margin-left: auto; font-size: 10px;"></i></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="agy-modal-backdrop" style="display: none;">
+        <div class="agy-modal-content" style="max-width: 500px;">
+            <div class="agy-modal-header">
+                <div class="agy-modal-title"><i class="fas fa-cog" style="color: var(--cyan-accent);"></i> Settings & Connection</div>
+                <button class="btn-icon" id="btn-close-settings"><i class="fas fa-times"></i></button>
+            </div>
+            <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 12.5px; color: var(--text-sub);">Server Host & Port</label>
+                    <input type="text" value="http://wahyuai.local:8888" readonly style="width: 100%; background: #222; border: 1px solid var(--border-main); color: #fff; padding: 8px 12px; border-radius: 8px; margin-top: 6px; font-family: monospace;" />
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 12.5px; color: var(--text-sub);">Tailscale Remote IP</label>
+                    <input type="text" value="http://100.89.122.63:8888" readonly style="width: 100%; background: #222; border: 1px solid var(--border-main); color: #fff; padding: 8px 12px; border-radius: 8px; margin-top: 6px; font-family: monospace;" />
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 12.5px; color: var(--text-sub);">Active Workspace</label>
+                    <input type="text" value="Tri Wahyu (File Kuliah) - Bismillah" readonly style="width: 100%; background: #222; border: 1px solid var(--border-main); color: #fff; padding: 8px 12px; border-radius: 8px; margin-top: 6px;" />
+                </div>
+                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                    <button class="btn-approve-plan" style="flex: 1;" onclick="document.getElementById('settings-modal').style.display='none'">Tutup</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

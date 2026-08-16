@@ -876,3 +876,86 @@ function openArtifactInPanel(filename) {
         else fetchArtifactAndRender(filename);
     }
 }
+
+
+// --- PROJECTS FILTER MENU & MODAL EVENT HANDLERS ---
+const filterMenu = document.getElementById("projects-filter-menu");
+const settingsModal = document.getElementById("settings-modal");
+const btnSettings = document.getElementById("btn-settings");
+const btnCloseSettings = document.getElementById("btn-close-settings");
+
+// Toggle Filter Context Menu
+document.addEventListener("click", (e) => {
+    const filterBtn = e.target.closest("#btn-projects-filter") || (e.target.closest(".fa-bars-staggered") ? e.target.closest("button") : null);
+    if (filterBtn) {
+        e.stopPropagation();
+        const rect = filterBtn.getBoundingClientRect();
+        filterMenu.style.top = `${rect.bottom + 6}px`;
+        filterMenu.style.left = `${rect.left}px`;
+        filterMenu.style.display = filterMenu.style.display === "none" ? "block" : "none";
+        if (navigator.vibrate) navigator.vibrate(20);
+        return;
+    }
+    if (filterMenu && !filterMenu.contains(e.target)) {
+        filterMenu.style.display = "none";
+    }
+});
+
+// Context Menu Item Click Handlers
+document.querySelectorAll(".ctx-item").forEach(item => {
+    item.addEventListener("click", () => {
+        const action = item.getAttribute("data-action");
+        if (action && !action.includes("submenu")) {
+            // Update checkmarks in section
+            const parent = item.parentElement;
+            const isGroup = action.startsWith("group-");
+            const isSort = action.startsWith("sort-");
+            const isSub = action.startsWith("sub-");
+            
+            document.querySelectorAll(".ctx-item").forEach(other => {
+                const oAct = other.getAttribute("data-action") || "";
+                if ((isGroup && oAct.startsWith("group-")) || 
+                    (isSort && oAct.startsWith("sort-")) || 
+                    (isSub && oAct.startsWith("sub-"))) {
+                    other.classList.remove("active");
+                    other.querySelector(".ctx-check").textContent = "";
+                }
+            });
+            item.classList.add("active");
+            item.querySelector(".ctx-check").textContent = "✓";
+            filterMenu.style.display = "none";
+            if (navigator.vibrate) navigator.vibrate(20);
+        }
+    });
+});
+
+// Settings Modal Triggers
+if (btnSettings && settingsModal) {
+    btnSettings.addEventListener("click", () => {
+        settingsModal.style.display = "flex";
+        if (navigator.vibrate) navigator.vibrate(20);
+    });
+}
+if (btnCloseSettings && settingsModal) {
+    btnCloseSettings.addEventListener("click", () => {
+        settingsModal.style.display = "none";
+    });
+    settingsModal.addEventListener("click", (e) => {
+        if (e.target === settingsModal) settingsModal.style.display = "none";
+    });
+}
+
+// Conversation History & Scheduled Tasks Triggers
+const btnHistory = document.getElementById("btn-history");
+const btnScheduled = document.getElementById("btn-scheduled");
+
+if (btnHistory) {
+    btnHistory.addEventListener("click", () => {
+        alert("Conversation History:\n- Bismillah (Tri Wahyu)\n- Remote Control via Telegram Bot\n- Local GPU Coding AI\n- YOLO Training\n- Waifu AI");
+    });
+}
+if (btnScheduled) {
+    btnScheduled.addEventListener("click", () => {
+        alert("Scheduled Tasks:\nTidak ada task cron terjadwal saat ini. Gunakan /schedule di chat untuk menambahkan.");
+    });
+}
