@@ -1,0 +1,22 @@
+# Local & Private Configuration
+config.json
+.env
+.env.local
+
+# Logs & Temporary Files
+*.log
+err.txt
+*.tmp
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+
+# OS Specific
+.DS_Store
+Thumbs.db

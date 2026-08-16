@@ -1,0 +1,15 @@
+{
+    "server": {
+        "host": "0.0.0.0",
+        "port": 8888,
+        "mdns_hostname": "wahyuai.local",
+        "app_title": "Antigravity WebRemote"
+    },
+    "ai_engine": {
+        "provider": "antigravity_core",
+        "system_prompt": "Antigravity AI Remote Interface"
+    },
+    "workspace": {
+        "default_dir": "."
+    }
+}
