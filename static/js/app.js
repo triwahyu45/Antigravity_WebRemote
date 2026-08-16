@@ -1,441 +1,273 @@
+// =========================================================================
+// ANTIGRAVITY WEBREMOTE - PRODUCTION CLIENT ENGINE v5.0
+// 1:1 Pixel-Perfect Desktop Mirroring, Multi-Mode, PWA & Two-Way Injection
+// =========================================================================
 
+const BASE_PATH = window.location.pathname.startsWith('/wahyuai') ? '/wahyuai' : (window.location.pathname.startsWith('/remote') ? '/remote' : '');
+let currentSessionId = "63fb64ac-9344-46a1-8d60-a891ba0835d8";
+let activeMacro = null;
+let activeRightTab = 'plan';
+let queuedComments = JSON.parse(localStorage.getItem("ag2r_queued_comments") || "[]");
+
+// --- DOM ELEMENTS ---
+const feedContainer = document.getElementById("feed-container");
+const chatStream = document.getElementById("chat-stream");
+const promptInput = document.getElementById("prompt-input");
+const btnSend = document.getElementById("btn-send");
+const btnMic = document.getElementById("btn-mic");
+const btnPlus = document.getElementById("btn-plus");
+const btnModelSelector = document.getElementById("btn-model-selector");
+const btnNewConv = document.getElementById("btn-new-conv");
+const btnHistory = document.getElementById("btn-history");
+const btnScheduled = document.getElementById("btn-scheduled");
+const btnSettings = document.getElementById("btn-settings");
+const btnProjectsFilter = document.getElementById("btn-projects-filter");
+const btnProjectsNew = document.getElementById("btn-projects-new");
+const btnOpenIde = document.getElementById("btn-open-ide");
+const btnSplitView = document.getElementById("btn-split-view");
+const btnToggleLeft = document.getElementById("btn-toggle-left");
+const btnCloseRight = document.getElementById("btn-close-right");
+const leftSidebar = document.getElementById("left-sidebar");
+const rightSidebar = document.getElementById("right-sidebar");
+
+// Modals
+const macrosModal = document.getElementById("macros-modal");
+const btnCloseMacros = document.getElementById("btn-close-macros");
+const settingsModal = document.getElementById("settings-modal");
+const btnCloseSettings = document.getElementById("btn-close-settings");
+const filterMenu = document.getElementById("projects-filter-menu");
+const imageModal = document.getElementById("image-modal");
+const imageModalImg = document.getElementById("image-modal-img");
+const runningTaskCard = document.getElementById("running-task-card");
+const runningTaskDesc = document.getElementById("running-task-desc");
+const btnStopTask = document.getElementById("btn-stop-task");
+
+// --- PWA SERVICE WORKER REGISTRATION ---
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
     });
 }
-// Dynamic Base Path Resolver for Multi-Mode Routing (/wahyuai, /remote, /)
-const BASE_PATH = window.location.pathname.startsWith('/wahyuai') ? '/wahyuai' : (window.location.pathname.startsWith('/remote') ? '/remote' : '');
-// ==========================================================================
-// ULTIMATE ANTIGRAVITY CONTROLLER WITH ACCORDIONS & ZERO OVERSCROLL
-// ==========================================================================
 
-const ACTIVE_ID = "63fb64ac-9344-46a1-8d60-a891ba0835d8";
-let currentSessionId = localStorage.getItem("current_session_id") || ACTIVE_ID;
-let socket = null;
-
-document.addEventListener("DOMContentLoaded", () => {
-    initUI();
-    loadProjectsTree();
-    loadSessionSteps(currentSessionId);
-    loadSessionDetails(currentSessionId);
-    initWebSocket();
-    initChatSender();
-});
-
-function initUI() {
-    const leftSidebar = document.getElementById("left-sidebar");
-    const rightSidebar = document.getElementById("right-sidebar");
-    const backdropLeft = document.getElementById("backdrop-left");
-    const backdropRight = document.getElementById("backdrop-right");
-    const backdropModal = document.getElementById("backdrop-modal");
-    const artifactModal = document.getElementById("artifact-modal");
-
-    const btnToggleLeft = document.getElementById("btn-toggle-left");
-    const btnToggleRight = document.getElementById("btn-toggle-right");
-    const btnCloseRight = document.getElementById("btn-close-right");
-    const btnCloseModal = document.getElementById("btn-close-modal");
-    const btnNewChat = document.getElementById("btn-new-chat");
-
-    btnToggleLeft.addEventListener("click", () => {
-        leftSidebar.classList.add("open");
-        backdropLeft.classList.add("active");
-    });
-
-    btnToggleRight.addEventListener("click", () => {
-        rightSidebar.classList.add("open");
-        backdropRight.classList.add("active");
-    });
-
-    backdropLeft.addEventListener("click", closeSidebars);
-    backdropRight.addEventListener("click", closeSidebars);
-    backdropModal.addEventListener("click", closeModal);
-
-    if (btnCloseRight) btnCloseRight.addEventListener("click", closeSidebars);
-    if (btnCloseModal) btnCloseModal.addEventListener("click", closeModal);
-
-    btnNewChat.addEventListener("click", () => {
-        currentSessionId = ACTIVE_ID;
-        localStorage.setItem("current_session_id", currentSessionId);
-        closeSidebars();
-        loadProjectsTree();
-        loadSessionSteps(currentSessionId);
-    });
-
-    function closeSidebars() {
-        leftSidebar.classList.remove("open");
-        rightSidebar.classList.remove("open");
-        backdropLeft.classList.remove("active");
-        backdropRight.classList.remove("active");
-    }
-
-    function closeModal() {
-        artifactModal.classList.remove("open");
-        backdropModal.classList.remove("active");
-    }
+// --- ESCAPE HTML UTILITY ---
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
-// 2-WAY CHAT SENDER
-function initChatSender() {
-    const promptInput = document.getElementById("chat-prompt");
-    const btnSend = document.getElementById("btn-send");
-    const btnMic = document.getElementById("btn-mic");
-
-    btnSend.addEventListener("click", handleSend);
-    const isMobileDevice = window.matchMedia("(pointer: coarse)").matches;
-    promptInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-            if (!isMobileDevice && !e.shiftKey) {
-                // Desktop: Enter sends message
-                e.preventDefault();
-                handleSend();
-            } else if (isMobileDevice) {
-                // Mobile: Enter inserts newline naturally
-            }
+// --- AUTOSCROLL ENGINE (scrollIntoView) ---
+function scrollToBottom(smooth = false) {
+    if (!feedContainer || !chatStream) return;
+    function doScroll() {
+        const lastEl = feedContainer.lastElementChild;
+        if (lastEl) {
+            lastEl.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end', inline: 'nearest' });
         }
-    });
-
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognizer = new SpeechRecognition();
-        recognizer.lang = 'id-ID';
-        recognizer.continuous = false;
-
-        btnMic.addEventListener("click", () => {
-            btnMic.classList.add("recording");
-            recognizer.start();
-        });
-
-        recognizer.onresult = (event) => {
-            const transcript = event.results[0][0].transcript;
-            promptInput.value = transcript;
-            btnMic.classList.remove("recording");
-        };
-
-        recognizer.onerror = () => btnMic.classList.remove("recording");
-        recognizer.onend = () => btnMic.classList.remove("recording");
+        chatStream.scrollTop = chatStream.scrollHeight + 999999;
     }
-
-    async function handleSend() {
-        let text = promptInput.value.trim();
-        if (activeMacro) {
-            text = `${activeMacro} ${text}`.trim();
-            removeActiveMacro();
-        }
-        
-        // Append queued comments formatted in structured Markdown
-        if (queuedComments.length > 0) {
-            let commentsMd = "\n\n### 💬 Review Comments:\n";
-            queuedComments.forEach((c) => {
-                commentsMd += `* > "${c.quote.slice(0, 150)}..."\n  * **Comment:** ${c.comment}\n`;
-            });
-            text = (text + commentsMd).trim();
-            queuedComments = [];
-            localStorage.setItem("ag2r_queued_comments", "[]");
-            renderCommentQueuePill();
-        }
-        if (!text) return;
-
-        appendUserMessage(text);
-        promptInput.value = "";
-        if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
-        updateEngineBadge({ status: "working", current_action: "Sending prompt to Antigravity..." });
-
-        try {
-            await fetch("/api/chat/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: text, session_id: currentSessionId })
-            });
-        } catch (e) {
-            console.error("Failed to send message:", e);
-        }
-    }
+    doScroll();
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 40);
+    setTimeout(doScroll, 120);
+    setTimeout(doScroll, 350);
 }
 
-function appendUserMessage(text) {
-    const container = document.getElementById("feed-container");
-    const row = document.createElement("div");
-    row.className = "feed-row user";
-    row.innerHTML = `<div class="user-bubble">${escapeHtml(text)}</div>`;
-    container.appendChild(row);
-    scrollToBottom();
-}
+// --- WEBSOCKET LIVE STREAMING ---
+let ws = null;
+let wsReconnectDelay = 1000;
 
-// WEBSOCKET REAL-TIME SYNC
-function initWebSocket() {
-    const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+function connectWebSocket() {
+    const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${proto}//${window.location.host}/ws/stream`;
     
-    socket = new WebSocket(wsUrl);
-
-    socket.onopen = () => {
-        console.log("⚡ WebSocket Live Connected to Antigravity");
-    };
-
-    socket.onmessage = (event) => {
-        try {
-            const data = JSON.parse(event.data);
-            if (data.event === "transcript_update" && data.session_id === currentSessionId) {
-                renderGroupedSteps(data.items);
-                if (data.engine_state) updateEngineBadge(data.engine_state);
-            } else if (data.event === "status_heartbeat") {
-                if (data.engine_state) updateEngineBadge(data.engine_state);
-            }
-        } catch (e) {
-            console.error("WS Error:", e);
-        }
-    };
-
-    socket.onclose = () => {
-        setTimeout(initWebSocket, 2000);
-    };
+    try {
+        ws = new WebSocket(wsUrl);
+        ws.onopen = () => {
+            console.log("[WS] Connected to live stream");
+            wsReconnectDelay = 1000;
+        };
+        ws.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                if (data.event === "transcript_update") {
+                    renderGroupedSteps(data.items);
+                    updateEngineState(data.engine_state);
+                } else if (data.event === "status_heartbeat") {
+                    updateEngineState(data.engine_state);
+                }
+            } catch (e) {}
+        };
+        ws.onclose = () => {
+            setTimeout(connectWebSocket, wsReconnectDelay);
+            wsReconnectDelay = Math.min(wsReconnectDelay * 1.5, 10000);
+        };
+    } catch (e) {
+        setTimeout(connectWebSocket, 3000);
+    }
 }
 
-function updateEngineBadge(state) {
-    const badge = document.getElementById("live-engine-badge");
+// --- ENGINE & TASK STATUS UPDATER ---
+function updateEngineState(state) {
+    if (!state) return;
+    const pill = document.getElementById("engine-status-pill");
     const text = document.getElementById("engine-status-text");
-    const tasksCard = document.getElementById("floating-tasks-card");
-    const tasksLabel = document.getElementById("tasks-count-label");
-    const taskCmd = document.getElementById("task-active-cmd");
-    const btnSend = document.getElementById("btn-send");
-
+    
     if (state.status === "working") {
-        badge.className = "status-indicator-badge working";
-        text.textContent = "Working";
-        
-        if (tasksCard) {
-            tasksCard.classList.remove("hidden");
-            taskCmd.textContent = state.current_action || "Thinking...";
-        }
-        
-        if (btnSend) {
-            btnSend.classList.add("stop-state");
-            btnSend.innerHTML = '<i class="fas fa-square"></i>';
-            btnSend.title = "Stop Generation";
+        if (pill) { pill.className = "agy-status-pill working"; }
+        if (text) { text.textContent = `Working (${state.elapsed_seconds || 0}s)`; }
+        if (runningTaskCard) {
+            runningTaskCard.style.display = "flex";
+            if (runningTaskDesc) runningTaskDesc.textContent = state.current_action || "Executing command...";
         }
     } else {
-        badge.className = "status-indicator-badge idle";
-        text.textContent = "Idle";
-        
-        if (tasksCard) {
-            tasksCard.classList.add("hidden");
-        }
-        
-        if (btnSend) {
-            btnSend.classList.remove("stop-state");
-            btnSend.innerHTML = '<i class="fas fa-arrow-up"></i>';
-            btnSend.title = "Send message";
-        }
+        if (pill) { pill.className = "agy-status-pill idle"; }
+        if (text) { text.textContent = "Idle"; }
+        if (runningTaskCard) { runningTaskCard.style.display = "none"; }
     }
 }
 
-// LOAD PROJECTS TREE
+// --- LOAD PROJECTS TREE ---
 async function loadProjectsTree() {
     try {
-        const res = await fetch("/api/projects");
+        const res = await fetch(`${BASE_PATH}/api/projects`);
         const data = await res.json();
-        const treeEl = document.getElementById("projects-tree");
-        treeEl.innerHTML = "";
+        renderProjects(data.projects || []);
+        if (data.active_id) currentSessionId = data.active_id;
+    } catch (e) {}
+}
 
-        if (data.engine_state) updateEngineBadge(data.engine_state);
+function renderProjects(projects) {
+    const list = document.getElementById("projects-list");
+    if (!list) return;
+    list.innerHTML = "";
 
-        // Render Projects Tree
-        data.projects.forEach(proj => {
-            const group = document.createElement("div");
-            group.className = "project-group";
-
-            const title = document.createElement("div");
-            title.className = "project-folder-title";
-            title.innerHTML = `<i class="fas fa-folder text-sub"></i> ${proj.name}`;
-            group.appendChild(title);
-
-            proj.conversations.forEach(conv => {
-                const item = document.createElement("div");
-                item.className = `conv-item ${conv.id === currentSessionId ? "active" : ""}`;
-                
-                const timeBadge = conv.time ? `<span class="time-badge">${conv.time}</span>` : '';
-                item.innerHTML = `<span class="conv-name">${conv.title}</span> ${timeBadge}`;
-                
-                item.addEventListener("click", () => {
-                    currentSessionId = conv.id;
-                    localStorage.setItem("current_session_id", currentSessionId);
-                    document.getElementById("header-chat").textContent = conv.title;
-                    document.getElementById("header-project").textContent = proj.name;
-                    
-                    document.getElementById("left-sidebar").classList.remove("open");
-                    document.getElementById("backdrop-left").classList.remove("active");
-                    
-                    loadProjectsTree();
-                    loadSessionSteps(currentSessionId);
-                    loadSessionDetails(currentSessionId);
-                });
-
-                group.appendChild(item);
+    projects.forEach((proj) => {
+        const item = document.createElement("div");
+        item.className = "agy-project-item";
+        
+        let convsHtml = "";
+        if (proj.conversations && proj.conversations.length > 0) {
+            convsHtml = '<div class="agy-convs-list">';
+            proj.conversations.forEach((c) => {
+                const activeClass = c.id === currentSessionId ? "active" : "";
+                convsHtml += `
+                    <div class="agy-conv-item ${activeClass}" onclick="switchConversation('${c.id}', '${escapeHtml(c.title)}')">
+                        <span class="conv-title">${escapeHtml(c.title)}</span>
+                        <span class="conv-time">${c.time || ""}</span>
+                    </div>`;
             });
-
-            treeEl.appendChild(group);
-        });
-
-        // Render Standalone Conversations Section (Matching Desktop!)
-        if (data.standalone_conversations && data.standalone_conversations.length > 0) {
-            const header = document.createElement("div");
-            header.className = "projects-section-header";
-            header.style.marginTop = "14px";
-            header.innerHTML = `<span>Conversations</span> <div class="projects-actions"><i class="fas fa-plus"></i></div>`;
-            treeEl.appendChild(header);
-
-            data.standalone_conversations.forEach(conv => {
-                const item = document.createElement("div");
-                item.className = `conv-item ${conv.id === currentSessionId ? "active" : ""}`;
-                
-                let dotOrTime = "";
-                if (conv.is_dot) {
-                    dotOrTime = `<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;"></span>`;
-                } else if (conv.time) {
-                    dotOrTime = `<span class="time-badge">${conv.time}</span>`;
-                }
-
-                item.innerHTML = `<span class="conv-name">${conv.title}</span> ${dotOrTime}`;
-                
-                item.addEventListener("click", () => {
-                    currentSessionId = conv.id;
-                    localStorage.setItem("current_session_id", currentSessionId);
-                    document.getElementById("header-chat").textContent = conv.title;
-                    document.getElementById("header-project").textContent = "Conversations";
-                    
-                    document.getElementById("left-sidebar").classList.remove("open");
-                    document.getElementById("backdrop-left").classList.remove("active");
-                    
-                    loadProjectsTree();
-                    loadSessionSteps(currentSessionId);
-                    loadSessionDetails(currentSessionId);
-                });
-
-                treeEl.appendChild(item);
-            });
+            convsHtml += "</div>";
         }
-    } catch (e) {
-        console.error("Tree error:", e);
+
+        item.innerHTML = `
+            <div class="agy-project-header">
+                <span class="agy-project-title"><i class="far fa-folder" style="color: var(--text-muted);"></i> ${escapeHtml(proj.name)}</span>
+                <div class="agy-project-actions">
+                    <button class="btn-sidebar-opt" title="Opsi Proyek" onclick="event.stopPropagation(); alert('Proyek: ${escapeHtml(proj.name)}');"><i class="fas fa-ellipsis-v"></i></button>
+                    <button class="btn-sidebar-opt" title="Percakapan Baru" onclick="event.stopPropagation(); startNewConversation();"><i class="fas fa-plus"></i></button>
+                </div>
+            </div>
+            ${convsHtml}
+        `;
+        list.appendChild(item);
+    });
+}
+
+function switchConversation(cid, title) {
+    currentSessionId = cid;
+    const headerConv = document.getElementById("header-conv-name");
+    if (headerConv) headerConv.textContent = title;
+    loadSessionSteps(cid);
+    loadProjectsTree();
+    if (window.innerWidth < 768 && leftSidebar) leftSidebar.classList.remove("open");
+}
+
+function startNewConversation() {
+    const title = prompt("Nama Percakapan Baru:", "Percakapan Baru");
+    if (title) {
+        alert(`Membuat percakapan baru: ${title}`);
     }
 }
 
-// LOAD STEPS
-let renderedCount = 0;
-
-async function loadSessionSteps(sessionId) {
+// --- LOAD SESSION STEPS & RENDER CHAT ---
+async function loadSessionSteps(cid) {
     try {
-        const res = await fetch(`/api/sessions/${sessionId}/steps`);
+        const res = await fetch(`${BASE_PATH}/api/sessions/${cid}/steps`);
         const steps = await res.json();
         renderGroupedSteps(steps, true);
-    } catch (e) {
-        console.error("Steps error:", e);
-    }
+    } catch (e) {}
 }
 
-// RENDER GROUPED STEPS (ACCORDION STYLE 1:1 WITH ANTIGRAVITY SCREENSHOT!)
-function renderGroupedSteps(steps, forceScroll = false) {
-    const container = document.getElementById("feed-container");
-    if (steps.length === renderedCount && !forceScroll) return;
+function renderGroupedSteps(steps, isInitial = false) {
+    if (!feedContainer) return;
+    feedContainer.innerHTML = "";
 
-    container.innerHTML = "";
-    renderedCount = steps.length;
+    let currentToolBatch = [];
 
-    let currentActivities = [];
-
-    function flushActivities() {
-        if (currentActivities.length === 0) return;
-
-        const row = document.createElement("div");
-        row.className = "feed-row activity_group";
-
-        // Count files & folders
-        let fileCount = 0;
-        let folderCount = 0;
-        currentActivities.forEach(act => {
-            if (act.name === "view_file" || act.name === "write_to_file" || act.name === "replace_file_content") fileCount++;
-            else if (act.name === "list_dir" || act.name === "find_by_name") folderCount++;
+    function flushToolBatch() {
+        if (currentToolBatch.length === 0) return;
+        const count = currentToolBatch.length;
+        const details = document.createElement("details");
+        details.className = "agy-tool-accordion";
+        
+        let actionsHtml = "";
+        currentToolBatch.forEach((tb) => {
+            actionsHtml += `<div class="agy-tool-row"><span class="tool-icon">⚡</span> <span class="tool-name">${escapeHtml(tb.name)}:</span> <span class="tool-summary">${escapeHtml(tb.summary || "")}</span></div>`;
         });
-
-        let headerText = "Thinking & Exploring";
-        if (fileCount > 0 && folderCount > 0) {
-            headerText = `Exploring ${fileCount} file${fileCount > 1 ? 's' : ''}, ${folderCount} folder${folderCount > 1 ? 's' : ''}`;
-        } else if (fileCount > 0) {
-            headerText = `Exploring ${fileCount} file${fileCount > 1 ? 's' : ''}`;
-        } else if (folderCount > 0) {
-            headerText = `Exploring ${folderCount} folder${folderCount > 1 ? 's' : ''}`;
-        } else {
-            headerText = `Worked for ${currentActivities.length * 2}s`;
-        }
-
-        const headerEl = document.createElement("div");
-        headerEl.className = "activity-header";
-        headerEl.innerHTML = `<span>${headerText}</span> <i class="fas fa-chevron-down"></i>`;
-
-        const bodyEl = document.createElement("div");
-        bodyEl.className = "activity-body collapsed";
-
-        currentActivities.forEach(act => {
-            const line = document.createElement("div");
-            line.className = "activity-line";
-
-            if (act.name === "view_file") {
-                const target = act.summary.replace("View ", "").replace("View file ", "");
-                line.innerHTML = `<span class="keyword">Analyzed</span> <span class="tag">{ }</span> <span class="target-path">${escapeHtml(target)}</span>`;
-            } else if (act.name === "list_dir" || act.name === "find_by_name") {
-                const target = act.summary.replace("List ", "").replace("Search ", "");
-                line.innerHTML = `<span class="keyword">Analyzed</span> <span class="tag">📁</span> <span class="target-path">${escapeHtml(target)}</span>`;
-            } else if (act.name === "run_command") {
-                line.innerHTML = `<span class="keyword">Ran</span> <span class="tag">⚡</span> <span class="target-path">${escapeHtml(act.summary)}</span>`;
-            } else if (act.name === "write_to_file" || act.name === "replace_file_content") {
-                line.innerHTML = `<span class="keyword">Modified</span> <span class="tag">📝</span> <span class="target-path">${escapeHtml(act.summary)}</span>`;
-            } else {
-                line.innerHTML = `<span class="keyword">Executed</span> <span class="tag">⚡</span> <span class="target-path">${escapeHtml(act.name)}: ${escapeHtml(act.summary)}</span>`;
-            }
-
-            bodyEl.appendChild(line);
-        });
-
-        headerEl.addEventListener("click", () => {
-            const isCollapsed = bodyEl.classList.toggle("collapsed");
-            headerEl.classList.toggle("open", !isCollapsed);
-        });
-
-        row.appendChild(headerEl);
-        row.appendChild(bodyEl);
-        container.appendChild(row);
-
-        currentActivities = [];
+        
+        details.innerHTML = `
+            <summary class="agy-tool-summary">
+                <span class="acc-arrow"><i class="fas fa-chevron-right"></i></span>
+                <span class="acc-title">Exploring ${count} actions & tool executions</span>
+            </summary>
+            <div class="agy-tool-details-body">${actionsHtml}</div>
+        `;
+        feedContainer.appendChild(details);
+        currentToolBatch = [];
     }
 
-    steps.forEach((step, idx) => {
+    steps.forEach((step) => {
+        if (step.type === "tool_call") {
+            currentToolBatch.push(step);
+            return;
+        }
+
+        flushToolBatch();
+
         if (step.type === "user") {
-            flushActivities();
-            const row = document.createElement("div");
-            row.className = "feed-row user";
-            let imgHtml = "";
+            const card = document.createElement("div");
+            card.className = "agy-user-message-card";
+            
+            let imgsHtml = "";
             if (step.images && step.images.length > 0) {
-                imgHtml = '<div class="user-uploaded-grid">';
+                imgsHtml = '<div class="user-msg-images">';
                 step.images.forEach(img => {
-                    const sid = step.session_id || currentSessionId;
-                    imgHtml += `<img src="/api/uploads/${sid}/${img}" class="user-img-thumb" onload="scrollToBottom()" onclick="openImageModal('/api/uploads/${sid}/${img}')" />`;
+                    imgsHtml += `<img src="${BASE_PATH}/api/uploads/${step.session_id || currentSessionId}/${img}" class="user-img-thumb" onclick="openImageModal(this.src)" title="Klik untuk perbesar" />`;
                 });
-                imgHtml += '</div>';
+                imgsHtml += '</div>';
             }
-            row.innerHTML = `<div class="user-bubble">${imgHtml}${escapeHtml(step.text)}</div>`;
-            container.appendChild(row);
-        } else if (step.type === "tool_call") {
-            currentActivities.push(step);
+            
+            card.innerHTML = `${imgsHtml}<div class="user-msg-text">${escapeHtml(step.text)}</div>`;
+            feedContainer.appendChild(card);
         } else if (step.type === "assistant") {
-            flushActivities();
             const row = document.createElement("div");
-            row.className = "feed-row assistant";
+            row.className = "agy-assistant-message markdown-body";
+            
+            let htmlContent = marked.parse(step.text || "");
+            
+            // Inline Artifact Cards
+            let artifactCardsHtml = "";
+            if (step.text.includes("implementation_plan.md") || step.text.includes("Implementation Plan")) {
+                artifactCardsHtml += `<div class="agy-inline-artifact-card" onclick="openArtifactInPanel('implementation_plan.md')"><i class="fas fa-file-alt"></i> Implementation Plan</div>`;
+            }
+            if (step.text.includes("walkthrough.md") || step.text.includes("Walkthrough")) {
+                artifactCardsHtml += `<div class="agy-inline-artifact-card" onclick="openArtifactInPanel('walkthrough.md')"><i class="fas fa-book-open" style="color: #4ade80;"></i> Walkthrough</div>`;
+            }
 
-            const body = document.createElement("div");
-            body.className = "assistant-body";
-            body.innerHTML = marked.parse(step.text);
+            row.innerHTML = artifactCardsHtml + htmlContent;
 
-            body.querySelectorAll("pre").forEach((pre) => {
+            // Highlight Code & Add 1-Tap Copy
+            row.querySelectorAll("pre").forEach((pre) => {
                 const wrapper = document.createElement("div");
                 wrapper.className = "code-block-wrapper";
                 pre.parentNode.insertBefore(wrapper, pre);
@@ -444,6 +276,7 @@ function renderGroupedSteps(steps, forceScroll = false) {
                 const copyBtn = document.createElement("button");
                 copyBtn.className = "btn-copy-code";
                 copyBtn.innerHTML = '<i class="far fa-copy"></i> Copy';
+                copyBtn.addEventListener("mousedown", (e) => e.preventDefault());
                 copyBtn.addEventListener("click", () => {
                     const code = pre.querySelector("code") ? pre.querySelector("code").innerText : pre.innerText;
                     navigator.clipboard.writeText(code).then(() => {
@@ -459,192 +292,81 @@ function renderGroupedSteps(steps, forceScroll = false) {
                 wrapper.appendChild(copyBtn);
             });
 
-            body.querySelectorAll("pre code").forEach((el) => {
-                hljs.highlightElement(el);
-            });
-
-            const footer = document.createElement("div");
-            footer.className = "assistant-footer";
-            footer.innerHTML = `
-                <span>10:40 PM</span>
-                <div class="actions">
-                    <i class="far fa-copy" title="Copy"></i>
-                    <i class="far fa-thumbs-up" title="Like"></i>
-                    <i class="far fa-thumbs-down" title="Dislike"></i>
-                </div>`;
-
-            row.appendChild(body);
-            row.appendChild(footer);
-            container.appendChild(row);
+            row.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
+            feedContainer.appendChild(row);
         }
     });
 
-    // If active tools are still going at the bottom
-    if (currentActivities.length > 0) {
-        flushActivities();
-    }
-
-    scrollToBottom();
+    flushToolBatch();
+    scrollToBottom(!isInitial);
 }
 
-// LOAD RIGHT PANEL & ARTIFACT CLICK VIEWER
-async function loadSessionDetails(sessionId) {
-    try {
-        const res = await fetch(`/api/sessions/${sessionId}/details`);
-        const data = await res.json();
+// --- SEND MESSAGE & TWO-WAY INJECTION ---
+async function handleSend() {
+    if (!promptInput) return;
+    let text = promptInput.value.trim();
+    if (!text && queuedComments.length === 0) return;
 
-        // Files
-        document.getElementById("count-files").textContent = data.files_changed.length;
-        const filesEl = document.getElementById("files-changed-list");
-        filesEl.innerHTML = "";
-        data.files_changed.slice(0, 6).forEach(f => {
-            const item = document.createElement("div");
-            item.className = "file-item";
-            item.innerHTML = `<i class="far fa-file-lines text-muted"></i> ${f}`;
-            filesEl.appendChild(item);
-        });
-
-        // Artifacts (Clickable Modal!)
-        document.getElementById("count-artifacts").textContent = data.artifacts_count;
-        const artsEl = document.getElementById("artifacts-list");
-        artsEl.innerHTML = "";
-        data.artifacts.slice(0, 6).forEach(a => {
-            const item = document.createElement("div");
-            item.className = "artifact-item";
-            item.innerHTML = `<i class="fas fa-book-open text-muted"></i> ${a}`;
-            item.addEventListener("click", () => openArtifactModal(a));
-            artsEl.appendChild(item);
-        });
-
-        // Uploads
-        document.getElementById("count-uploads").textContent = data.uploads_count;
-        const upEl = document.getElementById("uploads-list");
-        upEl.innerHTML = "";
-        data.uploads.slice(0, 4).forEach(u => {
-            const item = document.createElement("div");
-            item.className = "upload-item";
-            item.innerHTML = `<i class="far fa-image text-muted"></i> ${u}`;
-            upEl.appendChild(item);
-        });
-    } catch (e) {
-        console.error("Details error:", e);
+    if (activeMacro) {
+        text = `${activeMacro} ${text}`.trim();
+        removeActiveMacro();
     }
-}
 
-// OPEN ARTIFACT MODAL
-async function openArtifactModal(artifactName) {
-    const modal = document.getElementById("artifact-modal");
-    const backdrop = document.getElementById("backdrop-modal");
-    const titleEl = document.getElementById("modal-art-title");
-    const bodyEl = document.getElementById("modal-art-body");
+    if (queuedComments.length > 0) {
+        let commentsMd = "\n\n### 💬 Review Comments:\n";
+        queuedComments.forEach((c) => {
+            commentsMd += `* > "${c.quote.slice(0, 150)}..."\n  * **Comment:** ${c.comment}\n`;
+        });
+        text = (text + commentsMd).trim();
+        queuedComments = [];
+        localStorage.setItem("ag2r_queued_comments", "[]");
+        renderCommentQueuePill();
+    }
 
-    titleEl.innerHTML = `<i class="fas fa-book-open text-cyan"></i> ${artifactName}`;
-    bodyEl.innerHTML = "<p class='text-muted'>Loading document...</p>";
-    modal.classList.add("open");
-    backdrop.classList.add("active");
+    promptInput.value = "";
+    if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
 
     try {
-        const res = await fetch(`/api/artifacts/${currentSessionId}/${artifactName}`);
-        const data = await res.json();
-        bodyEl.innerHTML = marked.parse(data.content || "");
-        bodyEl.querySelectorAll("pre code").forEach((el) => {
-            hljs.highlightElement(el);
+        await fetch(`${BASE_PATH}/api/chat/send`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: text, session_id: currentSessionId })
         });
-    } catch (e) {
-        bodyEl.innerHTML = `<p class='text-gold'>Gagal memuat artefak: ${e.message}</p>`;
-    }
+    } catch (e) {}
 }
 
-function escapeHtml(text) {
-    if (!text) return "";
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
+if (btnSend) btnSend.addEventListener("click", handleSend);
 
-function scrollToBottom(smooth = false) {
-    const container = document.getElementById("feed-container");
-    const stream = document.getElementById("chat-stream");
-    if (!container || !stream) return;
-
-    function doScroll() {
-        const lastEl = container.lastElementChild;
-        if (lastEl) {
-            lastEl.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end', inline: 'nearest' });
+// Mobile vs Desktop Enter Key
+const isMobileDevice = window.matchMedia("(pointer: coarse)").matches;
+if (promptInput) {
+    promptInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            if (!isMobileDevice && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+            }
         }
-        stream.scrollTop = stream.scrollHeight + 999999;
-    }
-
-    // Multi-phase execution to guarantee scroll after all images, fonts, and markdown paint
-    doScroll();
-    requestAnimationFrame(doScroll);
-    setTimeout(doScroll, 40);
-    setTimeout(doScroll, 120);
-    setTimeout(doScroll, 300);
-    setTimeout(doScroll, 600);
+    });
 }
 
-function _old_scroll() {
-    const stream = document.getElementById("chat-stream");
-    if (!stream) return;
-
-    function doScroll() {
-        if (smooth) {
-            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
-        } else {
-            stream.scrollTop = stream.scrollHeight;
-        }
-    }
-
-    // Multi-stage scroll to ensure all DOM paints, highlights, and images are accounted for
-    requestAnimationFrame(doScroll);
-    setTimeout(doScroll, 40);
-    setTimeout(doScroll, 150);
-    setTimeout(doScroll, 400);
-}
-
-
-function openImageModal(imgSrc) {
-    const modal = document.getElementById("artifact-modal");
-    const backdrop = document.getElementById("backdrop-modal");
-    const titleEl = document.getElementById("modal-art-title");
-    const bodyEl = document.getElementById("modal-art-body");
-
-    titleEl.innerHTML = `<i class="far fa-image text-cyan"></i> Image Preview`;
-    bodyEl.innerHTML = `<div style="display:flex;justify-content:center;"><img src="${imgSrc}" style="max-width:100%;max-height:70vh;border-radius:8px;" /></div>`;
-    modal.classList.add("open");
-    backdrop.classList.add("active");
-}
-
-
-// --- AG2R ACTION MACROS & MODAL LOGIC ---
-let activeMacro = null;
-
-const btnPlus = document.getElementById("btn-plus");
-const macrosModal = document.getElementById("macros-modal");
-const btnCloseMacros = document.getElementById("btn-close-macros");
-const inputCapsule = document.querySelector(".agy-input-capsule");
-
+// --- ACTION MACROS MODAL LOGIC ---
 if (btnPlus && macrosModal) {
     btnPlus.addEventListener("click", () => {
         macrosModal.style.display = "flex";
         if (navigator.vibrate) navigator.vibrate(25);
     });
 }
-
 if (btnCloseMacros && macrosModal) {
-    btnCloseMacros.addEventListener("click", () => {
-        macrosModal.style.display = "none";
-    });
-    macrosModal.addEventListener("click", (e) => {
-        if (e.target === macrosModal) macrosModal.style.display = "none";
-    });
+    btnCloseMacros.addEventListener("click", () => { macrosModal.style.display = "none"; });
+    macrosModal.addEventListener("click", (e) => { if (e.target === macrosModal) macrosModal.style.display = "none"; });
 }
-
 document.querySelectorAll(".macro-option-item").forEach((item) => {
     item.addEventListener("click", () => {
         const macro = item.getAttribute("data-macro");
         setActiveMacro(macro);
         macrosModal.style.display = "none";
-        promptInput.focus();
+        if (promptInput) promptInput.focus();
         if (navigator.vibrate) navigator.vibrate([20, 30]);
     });
 });
@@ -654,7 +376,7 @@ function setActiveMacro(macro) {
     let existingPill = document.querySelector(".active-macro-pill");
     if (existingPill) existingPill.remove();
 
-    if (macro) {
+    if (macro && promptInput) {
         const pill = document.createElement("span");
         pill.className = "active-macro-pill";
         pill.innerHTML = `${macro} <button type="button" id="btn-remove-macro">&times;</button>`;
@@ -672,139 +394,7 @@ function removeActiveMacro() {
     if (pill) pill.remove();
 }
 
-// Diff Modal Logic
-const btnFilesChanged = document.getElementById("btn-files-changed");
-const diffModal = document.getElementById("diff-modal");
-const btnCloseDiff = document.getElementById("btn-close-diff");
-
-if (btnFilesChanged && diffModal) {
-    btnFilesChanged.addEventListener("click", () => {
-        diffModal.style.display = "flex";
-        loadDiffs();
-    });
-}
-if (btnCloseDiff && diffModal) {
-    btnCloseDiff.addEventListener("click", () => {
-        diffModal.style.display = "none";
-    });
-    diffModal.addEventListener("click", (e) => {
-        if (e.target === diffModal) diffModal.style.display = "none";
-    });
-}
-
-async function loadDiffs() {
-    const diffContent = document.getElementById("diff-content");
-    if (!diffContent) return;
-    try {
-        const res = await fetch(`${BASE_PATH}/api/review/diff`);
-        const data = await res.json();
-        if (data.files && data.files.length > 0) {
-            let html = "";
-            data.files.forEach(f => {
-                html += `<div class="diff-file-card">
-                    <div class="diff-file-header"><span>📁 ${f.name}</span> <span class="macro-badge">${f.status}</span></div>
-                    <div class="diff-lines">`;
-                f.lines.forEach(l => {
-                    const cls = l.startsWith("+") ? "add" : (l.startsWith("-") ? "del" : "");
-                    html += `<div class="diff-line ${cls}">${escapeHtml(l)}</div>`;
-                });
-                html += `</div></div>`;
-            });
-            diffContent.innerHTML = html;
-        } else {
-            diffContent.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">No pending diffs found.</div>`;
-        }
-    } catch (e) {
-        diffContent.innerHTML = `<div style="color: #f87171; padding: 20px;">Error loading diffs: ${e.message}</div>`;
-    }
-}
-
-
-// --- AG2R COMMENT QUEUING SYSTEM ---
-let queuedComments = JSON.parse(localStorage.getItem("ag2r_queued_comments") || "[]");
-
-function renderCommentQueuePill() {
-    let pill = document.getElementById("comment-queue-indicator");
-    if (queuedComments.length === 0) {
-        if (pill) pill.remove();
-        return;
-    }
-    if (!pill) {
-        pill = document.createElement("div");
-        pill.id = "comment-queue-indicator";
-        pill.className = "comment-queue-pill";
-        const inputArea = document.querySelector(".agy-input-capsule");
-        if (inputArea) inputArea.parentNode.insertBefore(pill, inputArea);
-    }
-    pill.innerHTML = `💬 ${queuedComments.length} comment(s) queued <button type="button" id="btn-clear-comments">&times;</button>`;
-    pill.querySelector("#btn-clear-comments").addEventListener("click", (e) => {
-        e.stopPropagation();
-        queuedComments = [];
-        localStorage.setItem("ag2r_queued_comments", "[]");
-        renderCommentQueuePill();
-        if (navigator.vibrate) navigator.vibrate(20);
-    });
-}
-
-// Create Comment FAB in DOM
-let commentFab = document.getElementById("comment-fab");
-if (!commentFab) {
-    commentFab = document.createElement("button");
-    commentFab.id = "comment-fab";
-    commentFab.innerHTML = '<i class="fas fa-comment-dots"></i> Add Comment';
-    document.body.appendChild(commentFab);
-}
-
-let lastSelectionText = "";
-
-document.addEventListener("selectionchange", () => {
-    const sel = window.getSelection();
-    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
-        if (commentFab) commentFab.style.display = "none";
-        return;
-    }
-    const text = sel.toString().trim();
-    if (text.length > 3) {
-        lastSelectionText = text;
-        try {
-            const range = sel.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            if (rect.width > 0 && rect.height > 0) {
-                commentFab.style.top = `${Math.max(10, rect.top - 42)}px`;
-                commentFab.style.left = `${Math.min(window.innerWidth - 140, Math.max(10, rect.left + rect.width / 2 - 60))}px`;
-                commentFab.style.display = "inline-flex";
-            }
-        } catch (e) {}
-    }
-});
-
-if (commentFab) {
-    commentFab.addEventListener("mousedown", (e) => e.preventDefault());
-    commentFab.addEventListener("click", () => {
-        if (!lastSelectionText) return;
-        const userComment = prompt(`Add comment for selection:\n"${lastSelectionText.slice(0, 80)}..."`);
-        if (userComment && userComment.trim()) {
-            queuedComments.push({
-                quote: lastSelectionText,
-                comment: userComment.trim(),
-                time: new Date().toLocaleTimeString()
-            });
-            localStorage.setItem("ag2r_queued_comments", JSON.stringify(queuedComments));
-            renderCommentQueuePill();
-            if (navigator.vibrate) navigator.vibrate([30, 50]);
-        }
-        commentFab.style.display = "none";
-        window.getSelection().removeAllRanges();
-    });
-}
-
-// Render queue pill on load
-renderCommentQueuePill();
-
-
-// --- 1:1 ARTIFACT CARDS & RIGHT SIDEBAR TABS ---
-let activeRightTab = 'plan';
-
+// --- RIGHT SIDEBAR TABS & ARTIFACT READER ---
 function switchRightTab(tab) {
     activeRightTab = tab;
     document.querySelectorAll('.agy-right-tab-item').forEach(el => {
@@ -830,14 +420,14 @@ async function fetchArtifactAndRender(filename) {
     try {
         const res = await fetch(`${BASE_PATH}/api/artifacts/${currentSessionId}/${filename}`);
         if (!res.ok) {
-            body.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 40px 10px;">Dokumen <b>${filename}</b> belum tersedia untuk sesi ini.</div>`;
+            body.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 40px 10px;">Dokumen <b>${filename}</b> belum tersedia.</div>`;
             return;
         }
         const data = await res.json();
         body.innerHTML = marked.parse(data.content || "");
         body.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
     } catch (e) {
-        body.innerHTML = `<div style="color: #f87171; padding: 20px;">Gagal memuat artifact: ${e.message}</div>`;
+        body.innerHTML = `<div style="color: #f87171; padding: 20px;">Gagal memuat: ${e.message}</div>`;
     }
 }
 
@@ -868,7 +458,6 @@ async function loadDiffsIntoRightPanel() {
 }
 
 function openArtifactInPanel(filename) {
-    const rightSidebar = document.getElementById('right-sidebar');
     if (rightSidebar) {
         rightSidebar.classList.add('open');
         if (filename.includes('plan')) switchRightTab('plan');
@@ -877,46 +466,37 @@ function openArtifactInPanel(filename) {
     }
 }
 
+function toggleRightSidebar() {
+    if (rightSidebar) rightSidebar.classList.toggle("open");
+}
 
-// --- PROJECTS FILTER MENU & MODAL EVENT HANDLERS ---
-const filterMenu = document.getElementById("projects-filter-menu");
-const settingsModal = document.getElementById("settings-modal");
-const btnSettings = document.getElementById("btn-settings");
-const btnCloseSettings = document.getElementById("btn-close-settings");
+if (btnSplitView) btnSplitView.addEventListener("click", toggleRightSidebar);
+if (btnToggleLeft && leftSidebar) btnToggleLeft.addEventListener("click", () => leftSidebar.classList.toggle("open"));
 
-// Toggle Filter Context Menu
-document.addEventListener("click", (e) => {
-    const filterBtn = e.target.closest("#btn-projects-filter") || (e.target.closest(".fa-bars-staggered") ? e.target.closest("button") : null);
-    if (filterBtn) {
+// --- PROJECTS FILTER CONTEXT MENU ---
+if (btnProjectsFilter && filterMenu) {
+    btnProjectsFilter.addEventListener("click", (e) => {
         e.stopPropagation();
-        const rect = filterBtn.getBoundingClientRect();
+        const rect = btnProjectsFilter.getBoundingClientRect();
         filterMenu.style.top = `${rect.bottom + 6}px`;
         filterMenu.style.left = `${rect.left}px`;
         filterMenu.style.display = filterMenu.style.display === "none" ? "block" : "none";
         if (navigator.vibrate) navigator.vibrate(20);
-        return;
-    }
-    if (filterMenu && !filterMenu.contains(e.target)) {
+    });
+}
+
+document.addEventListener("click", (e) => {
+    if (filterMenu && !filterMenu.contains(e.target) && e.target !== btnProjectsFilter) {
         filterMenu.style.display = "none";
     }
 });
 
-// Context Menu Item Click Handlers
 document.querySelectorAll(".ctx-item").forEach(item => {
     item.addEventListener("click", () => {
         const action = item.getAttribute("data-action");
-        if (action && !action.includes("submenu")) {
-            // Update checkmarks in section
-            const parent = item.parentElement;
-            const isGroup = action.startsWith("group-");
-            const isSort = action.startsWith("sort-");
-            const isSub = action.startsWith("sub-");
-            
+        if (action) {
             document.querySelectorAll(".ctx-item").forEach(other => {
-                const oAct = other.getAttribute("data-action") || "";
-                if ((isGroup && oAct.startsWith("group-")) || 
-                    (isSort && oAct.startsWith("sort-")) || 
-                    (isSub && oAct.startsWith("sub-"))) {
+                if (other.getAttribute("data-action")?.split("-")[0] === action.split("-")[0]) {
                     other.classList.remove("active");
                     other.querySelector(".ctx-check").textContent = "";
                 }
@@ -924,12 +504,11 @@ document.querySelectorAll(".ctx-item").forEach(item => {
             item.classList.add("active");
             item.querySelector(".ctx-check").textContent = "✓";
             filterMenu.style.display = "none";
-            if (navigator.vibrate) navigator.vibrate(20);
         }
     });
 });
 
-// Settings Modal Triggers
+// --- SETTINGS & BUTTON TRIGGERS ---
 if (btnSettings && settingsModal) {
     btnSettings.addEventListener("click", () => {
         settingsModal.style.display = "flex";
@@ -937,25 +516,75 @@ if (btnSettings && settingsModal) {
     });
 }
 if (btnCloseSettings && settingsModal) {
-    btnCloseSettings.addEventListener("click", () => {
-        settingsModal.style.display = "none";
-    });
-    settingsModal.addEventListener("click", (e) => {
-        if (e.target === settingsModal) settingsModal.style.display = "none";
+    btnCloseSettings.addEventListener("click", () => { settingsModal.style.display = "none"; });
+    settingsModal.addEventListener("click", (e) => { if (e.target === settingsModal) settingsModal.style.display = "none"; });
+}
+if (btnNewConv) btnNewConv.addEventListener("click", startNewConversation);
+if (btnProjectsNew) btnProjectsNew.addEventListener("click", () => { prompt("Nama Folder Proyek Baru:"); });
+if (btnHistory) btnHistory.addEventListener("click", () => { alert("Riwayat Percakapan Aktif."); });
+if (btnScheduled) btnScheduled.addEventListener("click", () => { alert("Scheduled Tasks: Tidak ada task cron aktif."); });
+if (btnOpenIde) btnOpenIde.addEventListener("click", () => { alert("Antigravity IDE Aktif."); });
+if (btnModelSelector) btnModelSelector.addEventListener("click", () => { alert("Model: Gemini 3.7 Flash Medium"); });
+
+// --- IMAGE LIGHTBOX MODAL ---
+function openImageModal(src) {
+    if (imageModal && imageModalImg) {
+        imageModalImg.src = src;
+        imageModal.style.display = "flex";
+        if (navigator.vibrate) navigator.vibrate(20);
+    }
+}
+
+// --- COMMENT QUEUING SELECTION FAB ---
+function renderCommentQueuePill() {
+    let pill = document.getElementById("comment-queue-indicator");
+    if (queuedComments.length === 0) {
+        if (pill) pill.remove();
+        return;
+    }
+    if (!pill) {
+        pill = document.createElement("div");
+        pill.id = "comment-queue-indicator";
+        pill.className = "comment-queue-pill";
+        const inputArea = document.querySelector(".agy-input-capsule");
+        if (inputArea) inputArea.parentNode.insertBefore(pill, inputArea);
+    }
+    pill.innerHTML = `💬 ${queuedComments.length} comment(s) queued <button type="button" id="btn-clear-comments">&times;</button>`;
+    pill.querySelector("#btn-clear-comments").addEventListener("click", (e) => {
+        e.stopPropagation();
+        queuedComments = [];
+        localStorage.setItem("ag2r_queued_comments", "[]");
+        renderCommentQueuePill();
     });
 }
 
-// Conversation History & Scheduled Tasks Triggers
-const btnHistory = document.getElementById("btn-history");
-const btnScheduled = document.getElementById("btn-scheduled");
+// --- VOICE RECOGNITION (MIC) ---
+if (btnMic) {
+    btnMic.addEventListener("click", () => {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            alert("Browser tidak mendukung Speech Recognition.");
+            return;
+        }
+        const rec = new SpeechRecognition();
+        rec.lang = "id-ID";
+        btnMic.style.color = "var(--emerald-neon)";
+        rec.onresult = (e) => {
+            const transcript = e.results[0][0].transcript;
+            if (promptInput) promptInput.value += (promptInput.value ? " " : "") + transcript;
+            btnMic.style.color = "";
+        };
+        rec.onerror = () => { btnMic.style.color = ""; };
+        rec.onend = () => { btnMic.style.color = ""; };
+        rec.start();
+    });
+}
 
-if (btnHistory) {
-    btnHistory.addEventListener("click", () => {
-        alert("Conversation History:\n- Bismillah (Tri Wahyu)\n- Remote Control via Telegram Bot\n- Local GPU Coding AI\n- YOLO Training\n- Waifu AI");
-    });
-}
-if (btnScheduled) {
-    btnScheduled.addEventListener("click", () => {
-        alert("Scheduled Tasks:\nTidak ada task cron terjadwal saat ini. Gunakan /schedule di chat untuk menambahkan.");
-    });
-}
+// --- INITIALIZE ON LOAD ---
+document.addEventListener("DOMContentLoaded", () => {
+    loadProjectsTree();
+    loadSessionSteps(currentSessionId);
+    connectWebSocket();
+    renderCommentQueuePill();
+    switchRightTab("plan");
+});

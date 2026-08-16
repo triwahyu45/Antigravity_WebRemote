@@ -1,136 +1,105 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Antigravity</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Antigravity Remote</title>
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#121212">
-    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="/icons/icon-192.png">
-
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Markdown Parser & Highlight.js -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark-dimmed.min.css">
+    <link rel="stylesheet" href="/css/app.css?v=5.0">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/atom-one-dark.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
-
-    <link rel="stylesheet" href="/css/app.css?v=4.0">
 </head>
 <body>
-
     <div class="agy-layout">
-        
-        <!-- LEFT SIDEBAR (Projects & Conversations) -->
-        <aside class="agy-left-sidebar" id="left-sidebar">
-            <div class="sidebar-top-actions">
-                <button class="nav-btn-primary" id="btn-new-chat">
+        <!-- LEFT SIDEBAR -->
+        <aside class="agy-sidebar" id="left-sidebar">
+            <div class="agy-sidebar-header">
+                <button class="agy-btn-new-conv" id="btn-new-conv">
                     <i class="fas fa-plus"></i> New Conversation
-                </button>
-                <button class="nav-btn-secondary">
-                    <i class="fas fa-clock-rotate-left"></i> Conversation History
-                </button>
-                <button class="nav-btn-secondary">
-                    <i class="fas fa-stopwatch"></i> Scheduled Tasks
                 </button>
             </div>
 
-            <div class="projects-section-header">
-                <span>Projects</span>
-                <div class="projects-actions">
-                    <i class="fas fa-folder-plus"></i>
-                    <i class="fas fa-bars-staggered"></i>
+            <div class="agy-sidebar-nav">
+                <div class="agy-nav-item" id="btn-history">
+                    <i class="far fa-clock"></i> Conversation History
+                </div>
+                <div class="agy-nav-item" id="btn-scheduled">
+                    <i class="fas fa-stopwatch"></i> Scheduled Tasks
                 </div>
             </div>
 
-            <!-- Projects Tree View -->
-            <div class="projects-tree" id="projects-tree"></div>
+            <div class="agy-projects-section">
+                <div class="agy-projects-header">
+                    <span>Projects</span>
+                    <div class="agy-projects-header-actions">
+                        <button class="btn-icon-xs" id="btn-projects-filter" title="Filter & Urutkan"><i class="fas fa-bars-staggered"></i></button>
+                        <button class="btn-icon-xs" id="btn-projects-new" title="Folder Baru"><i class="fas fa-folder-plus"></i></button>
+                    </div>
+                </div>
+                <div class="agy-projects-list" id="projects-list">
+                    <!-- Projects populated by JS -->
+                </div>
+            </div>
 
-            <div class="sidebar-bottom">
-                <button class="settings-btn"><i class="fas fa-gear"></i> Settings</button>
+            <div class="agy-sidebar-footer" id="btn-settings">
+                <i class="fas fa-cog"></i> Settings
             </div>
         </aside>
 
-        <!-- BACKDROP FOR MOBILE -->
-        <div class="backdrop" id="backdrop-left"></div>
-        <div class="backdrop" id="backdrop-right"></div>
-        <div class="backdrop" id="backdrop-modal"></div>
-
-        <!-- CENTER MAIN AREA -->
+        <!-- CENTER CHAT CANVAS -->
         <main class="agy-center-area">
-            
-            <!-- TOP BREADCRUMB BAR -->
-            <header class="agy-top-bar">
-                <div class="top-bar-left">
-                    <button class="icon-toggle" id="btn-toggle-left"><i class="fas fa-bars"></i></button>
-                    <div class="breadcrumb">
-                        <span class="project-tag" id="header-project">Tri Wahyu (File Kuliah)</span>
-                        <span class="divider">/</span>
-                        <span class="chat-title-tag" id="header-chat">Bismillah</span>
-                    </div>
+            <!-- HEADER -->
+            <header class="agy-top-header">
+                <button class="btn-icon mobile-only" id="btn-toggle-left" title="Buka Menu"><i class="fas fa-bars"></i></button>
+                <div class="agy-breadcrumb">
+                    <span class="proj-name" id="header-project-name">Tri Wahyu (File Kuliah)</span>
+                    <span class="sep">/</span>
+                    <span class="conv-name" id="header-conv-name">Bismillah</span>
                 </div>
-
-                <div class="top-bar-right">
-                    <!-- Live Working Status Pill -->
-                    <div class="status-indicator-badge idle" id="live-engine-badge">
-                        <div class="pulse-dot"></div>
+                <div class="agy-header-right">
+                    <div class="agy-status-pill idle" id="engine-status-pill">
+                        <span class="status-dot"></span>
                         <span class="status-text" id="engine-status-text">Idle</span>
                     </div>
-
-                    <button class="icon-action"><i class="fas fa-ellipsis-vertical"></i></button>
-                    <button class="btn-open-ide"><i class="fas fa-play text-cyan"></i> Open IDE</button>
-                    <button class="icon-toggle" id="btn-toggle-right"><i class="fas fa-table-columns"></i></button>
+                    <button class="agy-btn-open-ide" id="btn-open-ide"><i class="fas fa-play"></i> Open IDE</button>
+                    <button class="btn-icon" id="btn-split-view" title="Toggle Panel Kanan"><i class="fas fa-columns"></i></button>
                 </div>
             </header>
 
-            <!-- CHAT FEED -->
+            <!-- CHAT STREAM -->
             <div class="agy-chat-stream" id="chat-stream">
-                <div class="feed-container" id="feed-container"></div>
-                
-
+                <div id="feed-container">
+                    <!-- Chat messages populated by JS -->
+                </div>
             </div>
 
-            <!-- BOTTOM FLOATING INPUT -->
-            <footer class="agy-input-footer">
-
-                <!-- FLOATING RUNNING TASKS CARD (1:1 with Antigravity Desktop Screenshot) -->
-                <div class="floating-tasks-card hidden" id="floating-tasks-card">
-                    <div class="tasks-card-header">
-                        <span id="tasks-count-label">1 task running</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </div>
-                    <div class="tasks-card-body" id="tasks-list-body">
-                        <div class="task-running-item">
-                            <div class="task-spinner-circle"></div>
-                            <span class="task-command-name" id="task-active-cmd">python server.py</span>
-                        </div>
-                    </div>
+            <!-- FLOATING LIVE RUNNING TASK CARD -->
+            <div id="running-task-card" class="agy-floating-task-card" style="display: none;">
+                <div class="task-card-left">
+                    <span class="task-spinner"><i class="fas fa-circle-notch fa-spin"></i></span>
+                    <span class="task-desc" id="running-task-desc">Executing command...</span>
                 </div>
+                <button class="btn-stop-task" id="btn-stop-task" title="Hentikan Proses"><i class="fas fa-stop"></i></button>
+            </div>
 
+            <!-- FOOTER INPUT CAPSULE -->
+            <footer class="agy-footer-input">
                 <div class="agy-input-capsule">
-                    <button class="capsule-btn"><i class="fas fa-plus"></i></button>
-                    <div class="model-picker-pill">
-                        <i class="fas fa-sparkles text-cyan"></i>
-                        <span>Gemini 3.7 Flash Medium</span>
-                        <i class="fas fa-chevron-up text-muted"></i>
-                    </div>
-                    <textarea id="chat-prompt" placeholder="Ask a question, @ to mention, / for workflows" rows="1"></textarea>
-                    <button class="capsule-btn" id="btn-mic"><i class="fas fa-microphone"></i></button>
-                    <button class="btn-send-circle" id="btn-send"><i class="fas fa-arrow-up"></i></button>
+                    <button class="btn-capsule-icon" id="btn-plus" title="Actions & Slash Commands"><i class="fas fa-plus"></i></button>
+                    <button class="btn-model-pill" id="btn-model-selector">Gemini 3.7 Flash Medium <i class="fas fa-chevron-down"></i></button>
+                    <textarea id="prompt-input" placeholder="Ask a question, @ to mention, / for workflows" rows="1"></textarea>
+                    <button class="btn-capsule-icon" id="btn-mic" title="Voice Input"><i class="fas fa-microphone"></i></button>
+                    <button class="btn-send-circle" id="btn-send" title="Kirim"><i class="fas fa-arrow-up"></i></button>
                 </div>
             </footer>
-
         </main>
 
-        <!-- RIGHT SIDEBAR (Files Changed, Artifacts, Uploads) -->
-        <!-- 1:1 Desktop Right Sidebar Tabs & Markdown Viewer -->
+        <!-- RIGHT SIDEBAR (1:1 DESKTOP TABS & MARKDOWN ARTIFACTS) -->
         <aside class="agy-right-sidebar" id="right-sidebar">
             <div class="agy-right-header-tabs" id="right-tabs-bar">
                 <div class="agy-right-tab-item active" data-tab="plan" onclick="switchRightTab('plan')">
@@ -151,19 +120,7 @@
                 </div>
             </div>
         </aside>
-
-        <!-- ARTIFACT PREVIEW MODAL -->
-        <div class="artifact-modal" id="artifact-modal">
-            <div class="modal-header">
-                <div class="modal-title" id="modal-art-title"><i class="fas fa-book-open text-cyan"></i> Document Preview</div>
-                <button class="icon-btn-close" id="btn-close-modal"><i class="fas fa-xmark"></i></button>
-            </div>
-            <div class="modal-body" id="modal-art-body"></div>
-        </div>
-
     </div>
-
-    <script src="/js/app.js?v=4.0"></script>
 
     <!-- AG2R Action Macros Modal -->
     <div id="macros-modal" class="agy-modal-backdrop" style="display: none;">
@@ -197,20 +154,6 @@
         </div>
     </div>
 
-    <!-- Code Diff Viewer Modal -->
-    <div id="diff-modal" class="agy-modal-backdrop" style="display: none;">
-        <div class="agy-modal-content agy-diff-dialog">
-            <div class="agy-modal-header">
-                <div class="agy-modal-title"><i class="fas fa-code-compare" style="color: var(--cyan-accent);"></i> Code Review & Diffs</div>
-                <button class="btn-icon" id="btn-close-diff"><i class="fas fa-times"></i></button>
-            </div>
-            <div class="agy-diff-body" id="diff-content">
-                <div class="agy-diff-loading"><i class="fas fa-spinner fa-spin"></i> Loading diffs...</div>
-            </div>
-        </div>
-    </div>
-
-
     <!-- Projects Filter & Sort Dropdown Menu matching Screenshot 1 -->
     <div id="projects-filter-menu" class="agy-context-menu" style="display: none;">
         <div class="ctx-section-label">Group By</div>
@@ -230,9 +173,6 @@
         <div class="ctx-section-label">Subtitles</div>
         <div class="ctx-item active" data-action="sub-worktree"><span class="ctx-check">✓</span> Worktree</div>
         <div class="ctx-item" data-action="sub-none"><span class="ctx-check"></span> No Subtitle</div>
-        
-        <div class="ctx-divider"></div>
-        <div class="ctx-item" data-action="filter-submenu">Filter <i class="fas fa-chevron-right" style="margin-left: auto; font-size: 10px;"></i></div>
     </div>
 
     <!-- Settings Modal -->
@@ -262,5 +202,11 @@
         </div>
     </div>
 
+    <!-- Image Lightbox Modal -->
+    <div id="image-modal" class="agy-modal-backdrop" style="display: none;" onclick="this.style.display='none'">
+        <img id="image-modal-img" src="" style="max-width: 90vw; max-height: 85vh; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);" />
+    </div>
+
+    <script src="/js/app.js?v=5.0"></script>
 </body>
 </html>
