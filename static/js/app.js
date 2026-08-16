@@ -387,7 +387,7 @@ function renderGroupedSteps(steps, forceScroll = false) {
                 imgHtml = '<div class="user-uploaded-grid">';
                 step.images.forEach(img => {
                     const sid = step.session_id || currentSessionId;
-                    imgHtml += `<img src="/api/uploads/${sid}/${img}" class="user-img-thumb" onclick="openImageModal('/api/uploads/${sid}/${img}')" />`;
+                    imgHtml += `<img src="/api/uploads/${sid}/${img}" class="user-img-thumb" onload="scrollToBottom()" onclick="openImageModal('/api/uploads/${sid}/${img}')" />`;
                 });
                 imgHtml += '</div>';
             }
@@ -505,10 +505,25 @@ function escapeHtml(text) {
     return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
-function scrollToBottom() {
+function scrollToBottom(smooth = false) {
     const stream = document.getElementById("chat-stream");
-    stream.scrollTop = stream.scrollHeight;
+    if (!stream) return;
+
+    function doScroll() {
+        if (smooth) {
+            stream.scrollTo({ top: stream.scrollHeight, behavior: 'smooth' });
+        } else {
+            stream.scrollTop = stream.scrollHeight;
+        }
+    }
+
+    // Multi-stage scroll to ensure all DOM paints, highlights, and images are accounted for
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 40);
+    setTimeout(doScroll, 150);
+    setTimeout(doScroll, 400);
 }
+
 
 function openImageModal(imgSrc) {
     const modal = document.getElementById("artifact-modal");
