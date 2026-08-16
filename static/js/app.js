@@ -1,5 +1,5 @@
 // ==========================================================================
-// ULTIMATE ANTIGRAVITY CONTROLLER (Live Status, 2-Way Chat, Modal Viewer)
+// ULTIMATE ANTIGRAVITY CONTROLLER WITH ACCORDIONS & ZERO OVERSCROLL
 // ==========================================================================
 
 const ACTIVE_ID = "63fb64ac-9344-46a1-8d60-a891ba0835d8";
@@ -81,7 +81,6 @@ function initChatSender() {
         }
     });
 
-    // Voice Input (STT)
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognizer = new SpeechRecognition();
@@ -107,11 +106,8 @@ function initChatSender() {
         const text = promptInput.value.trim();
         if (!text) return;
 
-        // Optimistic UI Append
         appendUserMessage(text);
         promptInput.value = "";
-
-        // Trigger Live Working State in UI
         updateEngineBadge({ status: "working", current_action: "Sending prompt to Antigravity..." });
 
         try {
@@ -135,7 +131,7 @@ function appendUserMessage(text) {
     scrollToBottom();
 }
 
-// WEBSOCKET REAL-TIME SYNC & STATUS
+// WEBSOCKET REAL-TIME SYNC
 function initWebSocket() {
     const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${proto}//${window.location.host}/ws/stream`;
@@ -150,7 +146,7 @@ function initWebSocket() {
         try {
             const data = JSON.parse(event.data);
             if (data.event === "transcript_update" && data.session_id === currentSessionId) {
-                renderSteps(data.items);
+                renderGroupedSteps(data.items);
                 if (data.engine_state) updateEngineBadge(data.engine_state);
             } else if (data.event === "status_heartbeat") {
                 if (data.engine_state) updateEngineBadge(data.engine_state);
@@ -168,24 +164,17 @@ function initWebSocket() {
 function updateEngineBadge(state) {
     const badge = document.getElementById("live-engine-badge");
     const text = document.getElementById("engine-status-text");
-    const runningCard = document.getElementById("live-running-card");
-    const runningAction = document.getElementById("running-action-text");
-    const runningTimer = document.getElementById("running-timer-text");
 
     if (state.status === "working") {
         badge.className = "status-indicator-badge working";
         text.textContent = "Working";
-        runningCard.classList.remove("hidden");
-        runningAction.textContent = state.current_action || "Antigravity is working...";
-        runningTimer.textContent = `Worked for ${state.elapsed_seconds || 0}s`;
     } else {
         badge.className = "status-indicator-badge idle";
         text.textContent = "Idle";
-        runningCard.classList.add("hidden");
     }
 }
 
-// PROJECTS TREE
+// LOAD PROJECTS TREE
 async function loadProjectsTree() {
     try {
         const res = await fetch("/api/projects");
@@ -207,7 +196,7 @@ async function loadProjectsTree() {
             proj.conversations.forEach(conv => {
                 const item = document.createElement("div");
                 item.className = `conv-item ${conv.id === currentSessionId ? "active" : ""}`;
-                item.innerHTML = `<span>${conv.title}</span> <span class="time-badge">${conv.time}</span>`;
+                item.innerHTML = `<span class="conv-name">${conv.title}</span> <span class="time-badge">${conv.time}</span>`;
                 
                 item.addEventListener("click", () => {
                     currentSessionId = conv.id;
@@ -233,38 +222,108 @@ async function loadProjectsTree() {
     }
 }
 
-// LOAD STEPS & RENDER ARTIFACT PILLS
+// LOAD STEPS
 let renderedCount = 0;
 
 async function loadSessionSteps(sessionId) {
     try {
         const res = await fetch(`/api/sessions/${sessionId}/steps`);
         const steps = await res.json();
-        renderSteps(steps, true);
+        renderGroupedSteps(steps, true);
     } catch (e) {
         console.error("Steps error:", e);
     }
 }
 
-function renderSteps(steps, forceScroll = false) {
+// RENDER GROUPED STEPS (ACCORDION STYLE 1:1 WITH ANTIGRAVITY SCREENSHOT!)
+function renderGroupedSteps(steps, forceScroll = false) {
     const container = document.getElementById("feed-container");
     if (steps.length === renderedCount && !forceScroll) return;
 
     container.innerHTML = "";
     renderedCount = steps.length;
 
-    steps.forEach(step => {
-        const row = document.createElement("div");
-        row.className = `feed-row ${step.type}`;
+    let currentActivities = [];
 
+    function flushActivities() {
+        if (currentActivities.length === 0) return;
+
+        const row = document.createElement("div");
+        row.className = "feed-row activity_group";
+
+        // Count files & folders
+        let fileCount = 0;
+        let folderCount = 0;
+        currentActivities.forEach(act => {
+            if (act.name === "view_file" || act.name === "write_to_file" || act.name === "replace_file_content") fileCount++;
+            else if (act.name === "list_dir" || act.name === "find_by_name") folderCount++;
+        });
+
+        let headerText = "Thinking & Exploring";
+        if (fileCount > 0 && folderCount > 0) {
+            headerText = `Exploring ${fileCount} file${fileCount > 1 ? 's' : ''}, ${folderCount} folder${folderCount > 1 ? 's' : ''}`;
+        } else if (fileCount > 0) {
+            headerText = `Exploring ${fileCount} file${fileCount > 1 ? 's' : ''}`;
+        } else if (folderCount > 0) {
+            headerText = `Exploring ${folderCount} folder${folderCount > 1 ? 's' : ''}`;
+        } else {
+            headerText = `Worked for ${currentActivities.length * 2}s`;
+        }
+
+        const headerEl = document.createElement("div");
+        headerEl.className = "activity-header";
+        headerEl.innerHTML = `<span>${headerText}</span> <i class="fas fa-chevron-down"></i>`;
+
+        const bodyEl = document.createElement("div");
+        bodyEl.className = "activity-body collapsed";
+
+        currentActivities.forEach(act => {
+            const line = document.createElement("div");
+            line.className = "activity-line";
+
+            if (act.name === "view_file") {
+                const target = act.summary.replace("View ", "").replace("View file ", "");
+                line.innerHTML = `<span class="keyword">Analyzed</span> <span class="tag">{ }</span> <span class="target-path">${escapeHtml(target)}</span>`;
+            } else if (act.name === "list_dir" || act.name === "find_by_name") {
+                const target = act.summary.replace("List ", "").replace("Search ", "");
+                line.innerHTML = `<span class="keyword">Analyzed</span> <span class="tag">📁</span> <span class="target-path">${escapeHtml(target)}</span>`;
+            } else if (act.name === "run_command") {
+                line.innerHTML = `<span class="keyword">Ran</span> <span class="tag">⚡</span> <span class="target-path">${escapeHtml(act.summary)}</span>`;
+            } else if (act.name === "write_to_file" || act.name === "replace_file_content") {
+                line.innerHTML = `<span class="keyword">Modified</span> <span class="tag">📝</span> <span class="target-path">${escapeHtml(act.summary)}</span>`;
+            } else {
+                line.innerHTML = `<span class="keyword">Executed</span> <span class="tag">⚡</span> <span class="target-path">${escapeHtml(act.name)}: ${escapeHtml(act.summary)}</span>`;
+            }
+
+            bodyEl.appendChild(line);
+        });
+
+        headerEl.addEventListener("click", () => {
+            const isCollapsed = bodyEl.classList.toggle("collapsed");
+            headerEl.classList.toggle("open", !isCollapsed);
+        });
+
+        row.appendChild(headerEl);
+        row.appendChild(bodyEl);
+        container.appendChild(row);
+
+        currentActivities = [];
+    }
+
+    steps.forEach((step, idx) => {
         if (step.type === "user") {
+            flushActivities();
+            const row = document.createElement("div");
+            row.className = "feed-row user";
             row.innerHTML = `<div class="user-bubble">${escapeHtml(step.text)}</div>`;
+            container.appendChild(row);
         } else if (step.type === "tool_call") {
-            row.innerHTML = `
-                <i class="fas fa-bolt tool-icon text-cyan"></i>
-                <span class="tool-name">${escapeHtml(step.name)}</span>
-                <span class="tool-summary">: ${escapeHtml(step.summary)}</span>`;
+            currentActivities.push(step);
         } else if (step.type === "assistant") {
+            flushActivities();
+            const row = document.createElement("div");
+            row.className = "feed-row assistant";
+
             const body = document.createElement("div");
             body.className = "assistant-body";
             body.innerHTML = marked.parse(step.text);
@@ -285,10 +344,14 @@ function renderSteps(steps, forceScroll = false) {
 
             row.appendChild(body);
             row.appendChild(footer);
+            container.appendChild(row);
         }
-
-        container.appendChild(row);
     });
+
+    // If active tools are still going at the bottom
+    if (currentActivities.length > 0) {
+        flushActivities();
+    }
 
     scrollToBottom();
 }
