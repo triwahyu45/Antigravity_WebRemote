@@ -15,13 +15,7 @@ if "%PY_EXE%"=="" (
     for /f "delims=" %%i in ('where python 2^>nul') do set "PY_EXE=%%i"
 )
 
-if "%PY_EXE%"=="" (
-    echo [ERROR] Python tidak ditemukan di sistem!
-    pause
-    exit /b 1
-)
-
 start "" "%PY_EXE%" tray_app.py
 echo [OK] Antigravity Remote System Tray BERHASIL DIAKTIFKAN!
-echo Ikon muncul di Taskbar pojok kanan bawah (dekat jam).
-timeout /t 3 >nul
+ping 127.0.0.1 -n 2 >nul
+exit /b 0
