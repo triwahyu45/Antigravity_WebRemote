@@ -593,17 +593,42 @@ async def get_artifact_content(session_id: str, artifact_name: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# Multi-mode subpath routing (/wahyuai, /remote, and /)
+
+# Clean Static Files & Multi-Path HTML Serving
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+
 @app.get("/wahyuai", response_class=FileResponse)
-async def serve_wahyuai_subpath():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
-
+@app.get("/wahyuai/", response_class=FileResponse)
 @app.get("/remote", response_class=FileResponse)
-async def serve_remote_subpath():
-    return FileResponse(os.path.join(os.path.dirname(__file__), "static", "index.html"))
+@app.get("/remote/", response_class=FileResponse)
+@app.get("/", response_class=FileResponse)
+async def serve_index_page():
+    return FileResponse(os.path.join(static_dir, "index.html"))
 
-app.mount("/wahyuai", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True), name="wahyuai_static")
-app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True), name="static")
+@app.get("/manifest.json")
+async def get_manifest():
+    return FileResponse(os.path.join(static_dir, "manifest.json"))
+
+@app.get("/sw.js")
+async def get_sw():
+    return FileResponse(os.path.join(static_dir, "sw.js"), media_type="application/javascript")
+
+@app.get("/css/{file_path:path}")
+@app.get("/wahyuai/css/{file_path:path}")
+async def get_css(file_path: str):
+    p = os.path.join(static_dir, "css", file_path)
+    if os.path.exists(p): return FileResponse(p, media_type="text/css")
+    raise HTTPException(status_code=404)
+
+@app.get("/js/{file_path:path}")
+@app.get("/wahyuai/js/{file_path:path}")
+async def get_js(file_path: str):
+    p = os.path.join(static_dir, "js", file_path)
+    if os.path.exists(p): return FileResponse(p, media_type="application/javascript")
+    raise HTTPException(status_code=404)
+
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
 
 if __name__ == "__main__":
     import uvicorn
