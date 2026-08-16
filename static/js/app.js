@@ -164,13 +164,38 @@ function initWebSocket() {
 function updateEngineBadge(state) {
     const badge = document.getElementById("live-engine-badge");
     const text = document.getElementById("engine-status-text");
+    const tasksCard = document.getElementById("floating-tasks-card");
+    const tasksLabel = document.getElementById("tasks-count-label");
+    const taskCmd = document.getElementById("task-active-cmd");
+    const btnSend = document.getElementById("btn-send");
 
     if (state.status === "working") {
         badge.className = "status-indicator-badge working";
         text.textContent = "Working";
+        
+        if (tasksCard) {
+            tasksCard.classList.remove("hidden");
+            taskCmd.textContent = state.current_action || "Thinking...";
+        }
+        
+        if (btnSend) {
+            btnSend.classList.add("stop-state");
+            btnSend.innerHTML = '<i class="fas fa-square"></i>';
+            btnSend.title = "Stop Generation";
+        }
     } else {
         badge.className = "status-indicator-badge idle";
         text.textContent = "Idle";
+        
+        if (tasksCard) {
+            tasksCard.classList.add("hidden");
+        }
+        
+        if (btnSend) {
+            btnSend.classList.remove("stop-state");
+            btnSend.innerHTML = '<i class="fas fa-arrow-up"></i>';
+            btnSend.title = "Send message";
+        }
     }
 }
 

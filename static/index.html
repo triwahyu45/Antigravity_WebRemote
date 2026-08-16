@@ -106,6 +106,21 @@
 
             <!-- BOTTOM FLOATING INPUT -->
             <footer class="agy-input-footer">
+
+                <!-- FLOATING RUNNING TASKS CARD (1:1 with Antigravity Desktop Screenshot) -->
+                <div class="floating-tasks-card hidden" id="floating-tasks-card">
+                    <div class="tasks-card-header">
+                        <span id="tasks-count-label">1 task running</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                    <div class="tasks-card-body" id="tasks-list-body">
+                        <div class="task-running-item">
+                            <div class="task-spinner-circle"></div>
+                            <span class="task-command-name" id="task-active-cmd">python server.py</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="agy-input-capsule">
                     <button class="capsule-btn"><i class="fas fa-plus"></i></button>
                     <div class="model-picker-pill">
