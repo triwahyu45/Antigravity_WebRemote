@@ -209,6 +209,7 @@ async function loadProjectsTree() {
 
         if (data.engine_state) updateEngineBadge(data.engine_state);
 
+        // Render Projects Tree
         data.projects.forEach(proj => {
             const group = document.createElement("div");
             group.className = "project-group";
@@ -221,7 +222,9 @@ async function loadProjectsTree() {
             proj.conversations.forEach(conv => {
                 const item = document.createElement("div");
                 item.className = `conv-item ${conv.id === currentSessionId ? "active" : ""}`;
-                item.innerHTML = `<span class="conv-name">${conv.title}</span> <span class="time-badge">${conv.time}</span>`;
+                
+                const timeBadge = conv.time ? `<span class="time-badge">${conv.time}</span>` : '';
+                item.innerHTML = `<span class="conv-name">${conv.title}</span> ${timeBadge}`;
                 
                 item.addEventListener("click", () => {
                     currentSessionId = conv.id;
@@ -242,6 +245,45 @@ async function loadProjectsTree() {
 
             treeEl.appendChild(group);
         });
+
+        // Render Standalone Conversations Section (Matching Desktop!)
+        if (data.standalone_conversations && data.standalone_conversations.length > 0) {
+            const header = document.createElement("div");
+            header.className = "projects-section-header";
+            header.style.marginTop = "14px";
+            header.innerHTML = `<span>Conversations</span> <div class="projects-actions"><i class="fas fa-plus"></i></div>`;
+            treeEl.appendChild(header);
+
+            data.standalone_conversations.forEach(conv => {
+                const item = document.createElement("div");
+                item.className = `conv-item ${conv.id === currentSessionId ? "active" : ""}`;
+                
+                let dotOrTime = "";
+                if (conv.is_dot) {
+                    dotOrTime = `<span style="width:7px;height:7px;border-radius:50%;background:#3b82f6;flex-shrink:0;"></span>`;
+                } else if (conv.time) {
+                    dotOrTime = `<span class="time-badge">${conv.time}</span>`;
+                }
+
+                item.innerHTML = `<span class="conv-name">${conv.title}</span> ${dotOrTime}`;
+                
+                item.addEventListener("click", () => {
+                    currentSessionId = conv.id;
+                    localStorage.setItem("current_session_id", currentSessionId);
+                    document.getElementById("header-chat").textContent = conv.title;
+                    document.getElementById("header-project").textContent = "Conversations";
+                    
+                    document.getElementById("left-sidebar").classList.remove("open");
+                    document.getElementById("backdrop-left").classList.remove("active");
+                    
+                    loadProjectsTree();
+                    loadSessionSteps(currentSessionId);
+                    loadSessionDetails(currentSessionId);
+                });
+
+                treeEl.appendChild(item);
+            });
+        }
     } catch (e) {
         console.error("Tree error:", e);
     }

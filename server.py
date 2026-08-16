@@ -280,6 +280,7 @@ async def get_uploaded_image(session_id: str, filename: str):
 # Projects & Sessions Tree API
 @app.get("/api/projects")
 async def get_projects_tree():
+    # 100% Complete Real Projects Tree from Antigravity Desktop
     projects_tree = [
         {
             "name": "Tri Wahyu (File Kuliah)",
@@ -345,11 +346,84 @@ async def get_projects_tree():
                     "is_active": False
                 }
             ]
+        },
+        {
+            "name": "Training Yolo26",
+            "conversations": [
+                {
+                    "id": "78f818f0-15ea-4099-b1d6-444f9cf2e21b",
+                    "title": "YOLO GPU Training Notebook",
+                    "time": "1mo",
+                    "is_active": False
+                }
+            ]
+        },
+        {
+            "name": "WS2812_ESP32",
+            "conversations": [
+                {
+                    "id": "71c717b8-6a3f-42e8-8a0b-80df508b981f",
+                    "title": "Non-Blocking WS2812 ESP32 Project",
+                    "time": "2mo",
+                    "is_active": False
+                }
+            ]
+        },
+        {
+            "name": "Metodologi Penelitian",
+            "conversations": [
+                {
+                    "id": "8fcb79ae-443b-4cb3-a61f-618bf5d74268",
+                    "title": "baca file NOTE_UPDATE_DAN_HANDOFF_ANTIG...",
+                    "time": "2mo",
+                    "is_active": False
+                }
+            ]
+        },
+        {
+            "name": "Lomba Technocorner UGM",
+            "conversations": [
+                {
+                    "id": "4734edcd-79d1-419b-a320-c25608ad8557",
+                    "title": "Bismillah",
+                    "time": "pinned",
+                    "is_active": False
+                }
+            ]
+        },
+        {
+            "name": "Aulia Shabrina",
+            "conversations": [
+                {
+                    "id": "04b8afa6-4cf8-4c22-9214-7eb356f91ee2",
+                    "title": "Bismillah",
+                    "time": "17d",
+                    "is_active": False
+                }
+            ]
         }
     ]
+
+    # Standalone Conversations Section (Matching Desktop screenshot!)
+    standalone_conversations = [
+        {
+            "id": "7092bb49-14a5-48b4-9c88-e25df5f1bf1d",
+            "title": "Remote Control via Telegram Bot",
+            "time": "",
+            "is_dot": True
+        },
+        {
+            "id": "67fcab8e-8a17-4ba3-ab0e-26f59cba604d",
+            "title": "Local GPU Coding AI",
+            "time": "2mo",
+            "is_dot": False
+        }
+    ]
+
     return {
         "active_id": ACTIVE_CONVERSATION_ID,
         "projects": projects_tree,
+        "standalone_conversations": standalone_conversations,
         "engine_state": engine_state
     }
 
