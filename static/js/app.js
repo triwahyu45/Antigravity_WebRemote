@@ -539,6 +539,28 @@ function escapeHtml(text) {
 }
 
 function scrollToBottom(smooth = false) {
+    const container = document.getElementById("feed-container");
+    const stream = document.getElementById("chat-stream");
+    if (!container || !stream) return;
+
+    function doScroll() {
+        const lastEl = container.lastElementChild;
+        if (lastEl) {
+            lastEl.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'end', inline: 'nearest' });
+        }
+        stream.scrollTop = stream.scrollHeight + 999999;
+    }
+
+    // Multi-phase execution to guarantee scroll after all images, fonts, and markdown paint
+    doScroll();
+    requestAnimationFrame(doScroll);
+    setTimeout(doScroll, 40);
+    setTimeout(doScroll, 120);
+    setTimeout(doScroll, 300);
+    setTimeout(doScroll, 600);
+}
+
+function _old_scroll() {
     const stream = document.getElementById("chat-stream");
     if (!stream) return;
 

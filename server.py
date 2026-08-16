@@ -290,6 +290,31 @@ class ChatInput(BaseModel):
     message: str
     session_id: Optional[str] = ACTIVE_CONVERSATION_ID
 
+
+INCOMING_QUEUE_FILE = os.path.join(os.path.dirname(__file__), "incoming_web_chat.jsonl")
+
+def log_incoming_web_prompt(message: str, session_id: str):
+    record = {
+        "timestamp": time.time(),
+        "time_str": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "session_id": session_id,
+        "message": message
+    }
+    with open(INCOMING_QUEUE_FILE, "a", encoding="utf-8") as f:
+        f.write(json.dumps(record) + "\n")
+    safe_print(f"[WEB REMOTE INCOMING PROMPT RECORDED]: {message}")
+
+@app.get("/api/chat/incoming")
+@app.get("/wahyuai/api/chat/incoming")
+async def get_incoming_web_prompts():
+    prompts = []
+    if os.path.exists(INCOMING_QUEUE_FILE):
+        with open(INCOMING_QUEUE_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                if line.strip():
+                    prompts.append(json.loads(line.strip()))
+    return {"count": len(prompts), "prompts": prompts[-15:]}
+
 @app.post("/api/chat/send")
 @app.post("/wahyuai/api/chat/send")
 async def send_chat_message(data: ChatInput):
@@ -298,6 +323,7 @@ async def send_chat_message(data: ChatInput):
         raise HTTPException(status_code=400, detail="Pesan tidak boleh kosong")
     
     safe_print(f"[Mobile Remote Input Received]: {msg}")
+    log_incoming_web_prompt(msg, data.session_id or ACTIVE_CONVERSATION_ID)
     
     # Inject directly into Antigravity desktop chat input!
     threading.Thread(target=inject_chat_into_antigravity, args=(msg,), daemon=True).start()
