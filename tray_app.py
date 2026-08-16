@@ -90,7 +90,7 @@ def run_tray():
 
         menu = (
             item("⚡ Antigravity Remote (Port 8888)", lambda: None, enabled=False),
-            item("🌐 Buka di Browser", on_open_browser, default=True),
+            item("🌐 Buka WebRemote (wahyuai.local:8888/wahyuai)", on_open_browser, default=True),
             item("🏠 Salin Link Wi-Fi (wahyuai.local:8888)", on_copy_wifi),
             item("🌍 Salin Link Tailscale (100.89.122.63:8888)", on_copy_tailscale),
             pystray.Menu.SEPARATOR,

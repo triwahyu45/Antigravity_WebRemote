@@ -1,3 +1,5 @@
+// Dynamic Base Path Resolver for Multi-Mode Routing (/wahyuai, /remote, /)
+const BASE_PATH = window.location.pathname.startsWith('/wahyuai') ? '/wahyuai' : (window.location.pathname.startsWith('/remote') ? '/remote' : '');
 // ==========================================================================
 // ULTIMATE ANTIGRAVITY CONTROLLER WITH ACCORDIONS & ZERO OVERSCROLL
 // ==========================================================================
