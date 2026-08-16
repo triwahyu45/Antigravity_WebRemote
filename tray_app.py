@@ -1,6 +1,6 @@
 import os
 import sys
-import threading
+import subprocess
 import webbrowser
 import time
 import socket
@@ -22,58 +22,99 @@ def create_tray_icon():
     
     return image
 
-def start_server_internal():
-    import uvicorn
-    from server import app
-    config_p = os.path.join(base_dir, "config.json")
-    if not os.path.exists(config_p):
-        config_p = os.path.join(base_dir, "config.example.json")
+# Server Subprocess Manager
+server_proc = None
+
+def start_server_process():
+    global server_proc
+    python_exe = sys.executable
+    if "pythonw.exe" in python_exe.lower():
+        # Use python.exe for subprocess if available to ensure full standard library
+        alt_py = python_exe.lower().replace("pythonw.exe", "python.exe")
+        if os.path.exists(alt_py):
+            python_exe = alt_py
+            
+    log_path = os.path.join(base_dir, "server.log")
+    log_file = open(log_path, "a", encoding="utf-8")
     
-    import json
-    with open(config_p, "r", encoding="utf-8") as f:
-        conf = json.load(f)
+    # Kill any existing process on port 8888 first
+    try:
+        subprocess.run(
+            'powershell -Command "Get-NetTCPConnection -LocalPort 8888 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"',
+            shell=True,
+            capture_output=True
+        )
+    except Exception:
+        pass
         
-    host = conf.get("server", {}).get("host", "0.0.0.0")
-    port = conf.get("server", {}).get("port", 8888)
-    
-    config = uvicorn.Config(app, host=host, port=port, log_level="warning")
-    server = uvicorn.Server(config)
-    server.run()
+    server_proc = subprocess.Popen(
+        [python_exe, "server.py"],
+        cwd=base_dir,
+        stdout=log_file,
+        stderr=log_file,
+        creationflags=subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+    )
+
+def stop_server_process():
+    global server_proc
+    if server_proc:
+        try:
+            server_proc.terminate()
+            server_proc.kill()
+        except Exception:
+            pass
+    # Force kill port 8888
+    try:
+        subprocess.run(
+            'powershell -Command "Get-NetTCPConnection -LocalPort 8888 -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }"',
+            shell=True,
+            capture_output=True
+        )
+    except Exception:
+        pass
 
 def run_tray():
     import pystray
     from pystray import MenuItem as item
     
-    t = threading.Thread(target=start_server_internal, daemon=True)
-    t.start()
+    # Start server subprocess
+    start_server_process()
     
     def on_open_browser(icon, item):
         webbrowser.open("http://localhost:8888")
 
     def on_copy_wifi(icon, item):
-        import subprocess
         subprocess.run('powershell -command "Set-Clipboard -Value \"http://wahyuai.local:8888\""', shell=True)
 
     def on_copy_tailscale(icon, item):
-        import subprocess
         subprocess.run('powershell -command "Set-Clipboard -Value \"http://100.89.122.63:8888\""', shell=True)
 
+    def on_restart(icon, item):
+        stop_server_process()
+        time.sleep(1)
+        start_server_process()
+
     def on_exit(icon, item):
+        stop_server_process()
         icon.stop()
         os._exit(0)
 
     menu = (
-        item("⚡ Antigravity Remote (Active)", lambda: None, enabled=False),
+        item("⚡ Antigravity Remote (Port 8888)", lambda: None, enabled=False),
         item("🌐 Buka di Browser", on_open_browser, default=True),
         item("🏠 Salin Link Wi-Fi (wahyuai.local:8888)", on_copy_wifi),
         item("🌍 Salin Link Tailscale (100.89.122.63:8888)", on_copy_tailscale),
         pystray.Menu.SEPARATOR,
+        item("🔄 Restart Server", on_restart),
         item("❌ Keluar (Exit)", on_exit)
     )
 
     icon_img = create_tray_icon()
     icon = pystray.Icon("AntigravityRemote", icon_img, "Antigravity Remote (Port 8888)", menu)
-    icon.run()
+    try:
+        icon.run()
+    finally:
+        stop_server_process()
 
 if __name__ == "__main__":
     run_tray()
