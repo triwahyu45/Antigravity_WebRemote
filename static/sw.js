@@ -1,27 +1,22 @@
-const CACHE_NAME = 'wahyuai-v2';
-const STATIC_ASSETS = [
-  '/',
-  '/wahyuai',
-  '/css/app.css',
-  '/js/app.js'
-];
+const CACHE_NAME = 'wahyuai-v4';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS).catch(() => {}))
-  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((k) => {
+          if (k !== CACHE_NAME) return caches.delete(k);
+        })
+      );
+    }).then(() => self.clients.claim())
+  );
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/') || event.request.url.includes('/ws/')) {
-    return; // Pass through live dynamic API and WS
-  }
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
+  // Always fetch fresh network content for real-time remote
+  event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });

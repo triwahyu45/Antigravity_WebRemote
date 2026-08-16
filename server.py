@@ -74,6 +74,14 @@ async def lifespan(app: FastAPI):
     if zeroconf_instance:
         zeroconf_instance.close()
 
+
+@app.middleware("http")
+async def add_no_cache_headers(request, call_next):
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    return response
+
 app = FastAPI(title="Antigravity Remote", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
