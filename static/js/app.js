@@ -111,7 +111,11 @@ function initChatSender() {
     }
 
     async function handleSend() {
-        const text = promptInput.value.trim();
+        let text = promptInput.value.trim();
+        if (activeMacro) {
+            text = `${activeMacro} ${text}`.trim();
+            removeActiveMacro();
+        }
         if (!text) return;
 
         appendUserMessage(text);
@@ -590,4 +594,109 @@ function openImageModal(imgSrc) {
     bodyEl.innerHTML = `<div style="display:flex;justify-content:center;"><img src="${imgSrc}" style="max-width:100%;max-height:70vh;border-radius:8px;" /></div>`;
     modal.classList.add("open");
     backdrop.classList.add("active");
+}
+
+
+// --- AG2R ACTION MACROS & MODAL LOGIC ---
+let activeMacro = null;
+
+const btnPlus = document.getElementById("btn-plus");
+const macrosModal = document.getElementById("macros-modal");
+const btnCloseMacros = document.getElementById("btn-close-macros");
+const inputCapsule = document.querySelector(".agy-input-capsule");
+
+if (btnPlus && macrosModal) {
+    btnPlus.addEventListener("click", () => {
+        macrosModal.style.display = "flex";
+        if (navigator.vibrate) navigator.vibrate(25);
+    });
+}
+
+if (btnCloseMacros && macrosModal) {
+    btnCloseMacros.addEventListener("click", () => {
+        macrosModal.style.display = "none";
+    });
+    macrosModal.addEventListener("click", (e) => {
+        if (e.target === macrosModal) macrosModal.style.display = "none";
+    });
+}
+
+document.querySelectorAll(".macro-option-item").forEach((item) => {
+    item.addEventListener("click", () => {
+        const macro = item.getAttribute("data-macro");
+        setActiveMacro(macro);
+        macrosModal.style.display = "none";
+        promptInput.focus();
+        if (navigator.vibrate) navigator.vibrate([20, 30]);
+    });
+});
+
+function setActiveMacro(macro) {
+    activeMacro = macro;
+    let existingPill = document.querySelector(".active-macro-pill");
+    if (existingPill) existingPill.remove();
+
+    if (macro) {
+        const pill = document.createElement("span");
+        pill.className = "active-macro-pill";
+        pill.innerHTML = `${macro} <button type="button" id="btn-remove-macro">&times;</button>`;
+        pill.querySelector("button").addEventListener("click", (e) => {
+            e.stopPropagation();
+            removeActiveMacro();
+        });
+        promptInput.parentNode.insertBefore(pill, promptInput);
+    }
+}
+
+function removeActiveMacro() {
+    activeMacro = null;
+    const pill = document.querySelector(".active-macro-pill");
+    if (pill) pill.remove();
+}
+
+// Diff Modal Logic
+const btnFilesChanged = document.getElementById("btn-files-changed");
+const diffModal = document.getElementById("diff-modal");
+const btnCloseDiff = document.getElementById("btn-close-diff");
+
+if (btnFilesChanged && diffModal) {
+    btnFilesChanged.addEventListener("click", () => {
+        diffModal.style.display = "flex";
+        loadDiffs();
+    });
+}
+if (btnCloseDiff && diffModal) {
+    btnCloseDiff.addEventListener("click", () => {
+        diffModal.style.display = "none";
+    });
+    diffModal.addEventListener("click", (e) => {
+        if (e.target === diffModal) diffModal.style.display = "none";
+    });
+}
+
+async function loadDiffs() {
+    const diffContent = document.getElementById("diff-content");
+    if (!diffContent) return;
+    try {
+        const res = await fetch(`${BASE_PATH}/api/review/diff`);
+        const data = await res.json();
+        if (data.files && data.files.length > 0) {
+            let html = "";
+            data.files.forEach(f => {
+                html += `<div class="diff-file-card">
+                    <div class="diff-file-header"><span>📁 ${f.name}</span> <span class="macro-badge">${f.status}</span></div>
+                    <div class="diff-lines">`;
+                f.lines.forEach(l => {
+                    const cls = l.startsWith("+") ? "add" : (l.startsWith("-") ? "del" : "");
+                    html += `<div class="diff-line ${cls}">${escapeHtml(l)}</div>`;
+                });
+                html += `</div></div>`;
+            });
+            diffContent.innerHTML = html;
+        } else {
+            diffContent.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 20px;">No pending diffs found.</div>`;
+        }
+    } catch (e) {
+        diffContent.innerHTML = `<div style="color: #f87171; padding: 20px;">Error loading diffs: ${e.message}</div>`;
+    }
 }

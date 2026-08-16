@@ -178,5 +178,51 @@
     </div>
 
     <script src="/js/app.js"></script>
+
+    <!-- AG2R Action Macros Modal -->
+    <div id="macros-modal" class="agy-modal-backdrop" style="display: none;">
+        <div class="agy-modal-content agy-macros-dialog">
+            <div class="agy-modal-header">
+                <div class="agy-modal-title"><i class="fas fa-bolt" style="color: var(--cyan-accent);"></i> Actions & Slash Commands</div>
+                <button class="btn-icon" id="btn-close-macros"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="agy-macros-grid">
+                <div class="macro-option-item" data-macro="/btw" data-desc="Ask a quick side question without interrupting context">
+                    <div class="macro-opt-header"><span class="macro-badge">/btw</span> <span class="macro-opt-name">Side Question</span></div>
+                    <div class="macro-opt-desc">Ask a quick side question without losing context</div>
+                </div>
+                <div class="macro-option-item" data-macro="/goal" data-desc="Run autonomously until goal is achieved">
+                    <div class="macro-opt-header"><span class="macro-badge">/goal</span> <span class="macro-opt-name">Autonomous Goal</span></div>
+                    <div class="macro-opt-desc">Run long-running autonomous task without stopping</div>
+                </div>
+                <div class="macro-option-item" data-macro="/grill-me" data-desc="Interactive interview for design decisions">
+                    <div class="macro-opt-header"><span class="macro-badge">/grill-me</span> <span class="macro-opt-name">Interactive Interview</span></div>
+                    <div class="macro-opt-desc">Align on plan through an interactive interview</div>
+                </div>
+                <div class="macro-option-item" data-macro="/browser" data-desc="Autonomous web browsing & research">
+                    <div class="macro-opt-header"><span class="macro-badge">/browser</span> <span class="macro-opt-name">Web Research</span></div>
+                    <div class="macro-opt-desc">Search web, extract content, and interact with sites</div>
+                </div>
+                <div class="macro-option-item" data-macro="/schedule" data-desc="Schedule timer or recurring cron job">
+                    <div class="macro-opt-header"><span class="macro-badge">/schedule</span> <span class="macro-opt-name">Schedule Timer</span></div>
+                    <div class="macro-opt-desc">Set one-shot timer or recurring cron background job</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Code Diff Viewer Modal -->
+    <div id="diff-modal" class="agy-modal-backdrop" style="display: none;">
+        <div class="agy-modal-content agy-diff-dialog">
+            <div class="agy-modal-header">
+                <div class="agy-modal-title"><i class="fas fa-code-compare" style="color: var(--cyan-accent);"></i> Code Review & Diffs</div>
+                <button class="btn-icon" id="btn-close-diff"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="agy-diff-body" id="diff-content">
+                <div class="agy-diff-loading"><i class="fas fa-spinner fa-spin"></i> Loading diffs...</div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
