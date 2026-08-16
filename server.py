@@ -16,7 +16,7 @@ import threading
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
-from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -25,6 +25,9 @@ BRAIN_DIR = os.getenv("ANTIGRAVITY_BRAIN_DIR", os.path.expanduser("~/.gemini/ant
 ACTIVE_CONVERSATION_ID = "63fb64ac-9344-46a1-8d60-a891ba0835d8"
 
 config_path = os.path.join(os.path.dirname(__file__), "config.json")
+if not os.path.exists(config_path):
+    config_path = os.path.join(os.path.dirname(__file__), "config.example.json")
+
 with open(config_path, "r", encoding="utf-8") as f:
     CONFIG = json.load(f)
 
@@ -101,9 +104,18 @@ def clean_user_msg(raw):
     clean = re.sub(r'<CONTEXT_SUMMARY>[\s\S]*?</CONTEXT_SUMMARY>', '', clean)
     return clean.strip()
 
+def extract_images_from_user_msg(raw):
+    # Search for media_xxx.png in content or metadata
+    images = []
+    matches = re.findall(r'media_[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp)', raw)
+    for m in matches:
+        if m not in images:
+            images.append(m)
+    return images
+
 # State for Live Status Tracking
 engine_state = {
-    "status": "idle", # "idle", "working", "tool_executing"
+    "status": "idle",
     "current_action": "Ready",
     "started_at": 0,
     "elapsed_seconds": 0
@@ -111,9 +123,21 @@ engine_state = {
 
 def parse_transcript_file(cid: str) -> List[Dict]:
     t_path = os.path.join(BRAIN_DIR, cid, ".system_generated", "logs", "transcript.jsonl")
+    up_dir = os.path.join(BRAIN_DIR, cid, ".user_uploaded")
     items = []
     if not os.path.exists(t_path):
         return items
+
+    # Load all uploaded files sorted
+    uploaded_files = []
+    if os.path.exists(up_dir):
+        for f in os.listdir(up_dir):
+            if f.endswith(".png") or f.endswith(".jpg") or f.endswith(".jpeg"):
+                uploaded_files.append({
+                    "name": f,
+                    "mtime": os.path.getmtime(os.path.join(up_dir, f))
+                })
+        uploaded_files.sort(key=lambda x: x["mtime"])
 
     try:
         with open(t_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -125,12 +149,19 @@ def parse_transcript_file(cid: str) -> List[Dict]:
                     source = step.get("source", "")
                     content = step.get("content", "")
                     tool_calls = step.get("tool_calls", [])
-                    ts = step.get("timestamp", "")
+                    step_time = step.get("created_at", "")
                     
                     if stype == "USER_INPUT" or (source == "USER_EXPLICIT" and content):
                         u_text = clean_user_msg(content)
+                        u_imgs = extract_images_from_user_msg(content)
+                        
                         if u_text and not u_text.startswith("Error: The stream was interrupted"):
-                            items.append({"type": "user", "text": u_text})
+                            items.append({
+                                "type": "user",
+                                "text": u_text,
+                                "images": u_imgs,
+                                "session_id": cid
+                            })
                             
                     elif stype == "PLANNER_RESPONSE" or source == "MODEL":
                         if tool_calls:
@@ -160,10 +191,9 @@ def parse_transcript_file(cid: str) -> List[Dict]:
 # Background Live Watcher & Status Detector
 last_size = 0
 last_count = 0
-last_write_time = 0
 
 async def broadcast_transcript_updates():
-    global last_size, last_count, last_write_time, engine_state
+    global last_size, last_count, engine_state
     while True:
         try:
             t_path = os.path.join(BRAIN_DIR, ACTIVE_CONVERSATION_ID, ".system_generated", "logs", "transcript.jsonl")
@@ -172,7 +202,6 @@ async def broadcast_transcript_updates():
                 mtime = os.path.getmtime(t_path)
                 now = time.time()
                 
-                # If file was modified in the last 4 seconds -> Working!
                 is_working = (now - mtime) < 4.0
                 if is_working:
                     if engine_state["status"] == "idle":
@@ -189,7 +218,6 @@ async def broadcast_transcript_updates():
                     last_size = cur_size
                     items = parse_transcript_file(ACTIVE_CONVERSATION_ID)
                     
-                    # Detect current tool if last item is a tool_call
                     if items and items[-1]["type"] == "tool_call":
                         engine_state["current_action"] = f"Executing: {items[-1]['name']}"
 
@@ -208,7 +236,6 @@ async def broadcast_transcript_updates():
                                 if ws in connected_websockets:
                                     connected_websockets.remove(ws)
                 else:
-                    # Broadcast heartbeat status periodically
                     status_payload = json.dumps({
                         "event": "status_heartbeat",
                         "engine_state": engine_state
@@ -234,7 +261,6 @@ async def send_chat_message(data: ChatInput):
     if not msg:
         raise HTTPException(status_code=400, detail="Pesan tidak boleh kosong")
     
-    # In pure Antigravity mode, append message to the input queue or log
     safe_print(f"[Mobile Remote Input Received]: {msg}")
     
     return {
@@ -242,6 +268,14 @@ async def send_chat_message(data: ChatInput):
         "message": "Pesan berhasil dikirim ke Antigravity desktop",
         "text": msg
     }
+
+# Image Serving API
+@app.get("/api/uploads/{session_id}/{filename}")
+async def get_uploaded_image(session_id: str, filename: str):
+    file_path = os.path.join(BRAIN_DIR, session_id, ".user_uploaded", filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Image not found")
+    return FileResponse(file_path)
 
 # Projects & Sessions Tree API
 @app.get("/api/projects")
@@ -353,7 +387,6 @@ async def get_session_details(session_id: str):
         "uploads": uploads
     }
 
-# Artifact Content Viewer API
 @app.get("/api/artifacts/{session_id}/{artifact_name:path}")
 async def get_artifact_content(session_id: str, artifact_name: str):
     art_path = os.path.join(BRAIN_DIR, session_id, artifact_name)

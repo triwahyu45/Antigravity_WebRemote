@@ -315,7 +315,16 @@ function renderGroupedSteps(steps, forceScroll = false) {
             flushActivities();
             const row = document.createElement("div");
             row.className = "feed-row user";
-            row.innerHTML = `<div class="user-bubble">${escapeHtml(step.text)}</div>`;
+            let imgHtml = "";
+            if (step.images && step.images.length > 0) {
+                imgHtml = '<div class="user-uploaded-grid">';
+                step.images.forEach(img => {
+                    const sid = step.session_id || currentSessionId;
+                    imgHtml += `<img src="/api/uploads/${sid}/${img}" class="user-img-thumb" onclick="openImageModal('/api/uploads/${sid}/${img}')" />`;
+                });
+                imgHtml += '</div>';
+            }
+            row.innerHTML = `<div class="user-bubble">${imgHtml}${escapeHtml(step.text)}</div>`;
             container.appendChild(row);
         } else if (step.type === "tool_call") {
             currentActivities.push(step);
@@ -432,4 +441,16 @@ function escapeHtml(text) {
 function scrollToBottom() {
     const stream = document.getElementById("chat-stream");
     stream.scrollTop = stream.scrollHeight;
+}
+
+function openImageModal(imgSrc) {
+    const modal = document.getElementById("artifact-modal");
+    const backdrop = document.getElementById("backdrop-modal");
+    const titleEl = document.getElementById("modal-art-title");
+    const bodyEl = document.getElementById("modal-art-body");
+
+    titleEl.innerHTML = `<i class="far fa-image text-cyan"></i> Image Preview`;
+    bodyEl.innerHTML = `<div style="display:flex;justify-content:center;"><img src="${imgSrc}" style="max-width:100%;max-height:70vh;border-radius:8px;" /></div>`;
+    modal.classList.add("open");
+    backdrop.classList.add("active");
 }

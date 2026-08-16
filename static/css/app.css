@@ -706,3 +706,27 @@ html, body {
     .breadcrumb .divider { display: none; }
     .btn-open-ide { display: none; }
 }
+
+/* USER UPLOADED IMAGES GRID (Matching 1:1 with Antigravity Desktop Screenshot) */
+.user-uploaded-grid {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+}
+
+.user-img-thumb {
+    width: 68px;
+    height: 68px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    background: #080808;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.user-img-thumb:hover {
+    transform: scale(1.04);
+    border-color: var(--cyan-accent);
+}
