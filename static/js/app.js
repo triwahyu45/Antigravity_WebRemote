@@ -1,3 +1,9 @@
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+    });
+}
 // Dynamic Base Path Resolver for Multi-Mode Routing (/wahyuai, /remote, /)
 const BASE_PATH = window.location.pathname.startsWith('/wahyuai') ? '/wahyuai' : (window.location.pathname.startsWith('/remote') ? '/remote' : '');
 // ==========================================================================
@@ -110,6 +116,7 @@ function initChatSender() {
 
         appendUserMessage(text);
         promptInput.value = "";
+        if (navigator.vibrate) navigator.vibrate([20, 40, 20]);
         updateEngineBadge({ status: "working", current_action: "Sending prompt to Antigravity..." });
 
         try {
@@ -405,6 +412,30 @@ function renderGroupedSteps(steps, forceScroll = false) {
             const body = document.createElement("div");
             body.className = "assistant-body";
             body.innerHTML = marked.parse(step.text);
+
+            body.querySelectorAll("pre").forEach((pre) => {
+                const wrapper = document.createElement("div");
+                wrapper.className = "code-block-wrapper";
+                pre.parentNode.insertBefore(wrapper, pre);
+                wrapper.appendChild(pre);
+
+                const copyBtn = document.createElement("button");
+                copyBtn.className = "btn-copy-code";
+                copyBtn.innerHTML = '<i class="far fa-copy"></i> Copy';
+                copyBtn.addEventListener("click", () => {
+                    const code = pre.querySelector("code") ? pre.querySelector("code").innerText : pre.innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        copyBtn.classList.add("copied");
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        if (navigator.vibrate) navigator.vibrate(30);
+                        setTimeout(() => {
+                            copyBtn.classList.remove("copied");
+                            copyBtn.innerHTML = '<i class="far fa-copy"></i> Copy';
+                        }, 2000);
+                    });
+                });
+                wrapper.appendChild(copyBtn);
+            });
 
             body.querySelectorAll("pre code").forEach((el) => {
                 hljs.highlightElement(el);

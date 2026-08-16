@@ -801,3 +801,70 @@ html, body {
 .btn-send-circle.stop-state i {
     font-size: 11px;
 }
+
+/* AG2R-INSPIRED MACRO CHIPS & 1-TAP CODE COPY */
+.macro-chips-container {
+    display: flex;
+    gap: 6px;
+    padding: 0 16px 8px;
+    overflow-x: auto;
+    max-width: 820px;
+    width: 100%;
+    scrollbar-width: none;
+}
+.macro-chips-container::-webkit-scrollbar { display: none; }
+
+.macro-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #181818;
+    border: 1px solid var(--border-main);
+    color: var(--text-sub);
+    font-size: 11.5px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 14px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.macro-chip:hover, .macro-chip:active {
+    background: var(--bg-sidebar-active);
+    color: var(--cyan-accent);
+    border-color: var(--border-cyan);
+}
+
+.code-block-wrapper {
+    position: relative;
+    margin: 12px 0;
+}
+
+.btn-copy-code {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(30, 30, 30, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    backdrop-filter: blur(4px);
+    transition: all 0.15s;
+    z-index: 10;
+}
+.btn-copy-code:hover {
+    background: #2a2a2a;
+    color: #ffffff;
+    border-color: var(--cyan-accent);
+}
+.btn-copy-code.copied {
+    color: var(--emerald-neon);
+    border-color: var(--emerald-neon);
+}
