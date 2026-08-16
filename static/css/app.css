@@ -1114,3 +1114,80 @@ html, body {
     background: rgba(239, 68, 68, 0.15);
     color: #f87171;
 }
+
+
+/* AG2R SELECTION COMMENTING & QUEUE SYSTEM */
+#comment-fab {
+    position: fixed;
+    display: none;
+    z-index: 1200;
+    background: #252525;
+    border: 1px solid var(--border-cyan);
+    color: var(--cyan-accent);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    backdrop-filter: blur(8px);
+    align-items: center;
+    gap: 6px;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+#comment-fab:hover, #comment-fab:active {
+    transform: scale(1.06);
+    background: #303030;
+}
+
+.comment-queue-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    color: var(--emerald-neon);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 12px;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
+.comment-queue-pill button {
+    background: none;
+    border: none;
+    color: var(--emerald-neon);
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+
+/* AG2R MOBILE VIEWPORT & SAFE AREA INSETS */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --input-bar-height: 70px;
+}
+
+html, body {
+    overscroll-behavior: none !important;
+    height: 100dvh !important;
+    width: 100vw !important;
+}
+
+.agy-layout {
+    height: 100dvh !important;
+    width: 100vw !important;
+}
+
+.agy-chat-stream {
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(var(--input-bar-height) + 16px) !important;
+}
+
+.agy-footer-input {
+    padding-bottom: max(12px, var(--safe-bottom)) !important;
+}

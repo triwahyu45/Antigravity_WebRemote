@@ -82,10 +82,16 @@ function initChatSender() {
     const btnMic = document.getElementById("btn-mic");
 
     btnSend.addEventListener("click", handleSend);
+    const isMobileDevice = window.matchMedia("(pointer: coarse)").matches;
     promptInput.addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+        if (e.key === "Enter") {
+            if (!isMobileDevice && !e.shiftKey) {
+                // Desktop: Enter sends message
+                e.preventDefault();
+                handleSend();
+            } else if (isMobileDevice) {
+                // Mobile: Enter inserts newline naturally
+            }
         }
     });
 
@@ -115,6 +121,18 @@ function initChatSender() {
         if (activeMacro) {
             text = `${activeMacro} ${text}`.trim();
             removeActiveMacro();
+        }
+        
+        // Append queued comments formatted in structured Markdown
+        if (queuedComments.length > 0) {
+            let commentsMd = "\n\n### 💬 Review Comments:\n";
+            queuedComments.forEach((c) => {
+                commentsMd += `* > "${c.quote.slice(0, 150)}..."\n  * **Comment:** ${c.comment}\n`;
+            });
+            text = (text + commentsMd).trim();
+            queuedComments = [];
+            localStorage.setItem("ag2r_queued_comments", "[]");
+            renderCommentQueuePill();
         }
         if (!text) return;
 
@@ -700,3 +718,85 @@ async function loadDiffs() {
         diffContent.innerHTML = `<div style="color: #f87171; padding: 20px;">Error loading diffs: ${e.message}</div>`;
     }
 }
+
+
+// --- AG2R COMMENT QUEUING SYSTEM ---
+let queuedComments = JSON.parse(localStorage.getItem("ag2r_queued_comments") || "[]");
+
+function renderCommentQueuePill() {
+    let pill = document.getElementById("comment-queue-indicator");
+    if (queuedComments.length === 0) {
+        if (pill) pill.remove();
+        return;
+    }
+    if (!pill) {
+        pill = document.createElement("div");
+        pill.id = "comment-queue-indicator";
+        pill.className = "comment-queue-pill";
+        const inputArea = document.querySelector(".agy-input-capsule");
+        if (inputArea) inputArea.parentNode.insertBefore(pill, inputArea);
+    }
+    pill.innerHTML = `💬 ${queuedComments.length} comment(s) queued <button type="button" id="btn-clear-comments">&times;</button>`;
+    pill.querySelector("#btn-clear-comments").addEventListener("click", (e) => {
+        e.stopPropagation();
+        queuedComments = [];
+        localStorage.setItem("ag2r_queued_comments", "[]");
+        renderCommentQueuePill();
+        if (navigator.vibrate) navigator.vibrate(20);
+    });
+}
+
+// Create Comment FAB in DOM
+let commentFab = document.getElementById("comment-fab");
+if (!commentFab) {
+    commentFab = document.createElement("button");
+    commentFab.id = "comment-fab";
+    commentFab.innerHTML = '<i class="fas fa-comment-dots"></i> Add Comment';
+    document.body.appendChild(commentFab);
+}
+
+let lastSelectionText = "";
+
+document.addEventListener("selectionchange", () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.toString().trim()) {
+        if (commentFab) commentFab.style.display = "none";
+        return;
+    }
+    const text = sel.toString().trim();
+    if (text.length > 3) {
+        lastSelectionText = text;
+        try {
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                commentFab.style.top = `${Math.max(10, rect.top - 42)}px`;
+                commentFab.style.left = `${Math.min(window.innerWidth - 140, Math.max(10, rect.left + rect.width / 2 - 60))}px`;
+                commentFab.style.display = "inline-flex";
+            }
+        } catch (e) {}
+    }
+});
+
+if (commentFab) {
+    commentFab.addEventListener("mousedown", (e) => e.preventDefault());
+    commentFab.addEventListener("click", () => {
+        if (!lastSelectionText) return;
+        const userComment = prompt(`Add comment for selection:\n"${lastSelectionText.slice(0, 80)}..."`);
+        if (userComment && userComment.trim()) {
+            queuedComments.push({
+                quote: lastSelectionText,
+                comment: userComment.trim(),
+                time: new Date().toLocaleTimeString()
+            });
+            localStorage.setItem("ag2r_queued_comments", JSON.stringify(queuedComments));
+            renderCommentQueuePill();
+            if (navigator.vibrate) navigator.vibrate([30, 50]);
+        }
+        commentFab.style.display = "none";
+        window.getSelection().removeAllRanges();
+    });
+}
+
+// Render queue pill on load
+renderCommentQueuePill();
