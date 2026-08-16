@@ -8,7 +8,7 @@ import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import json
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import socket
 import psutil
 import asyncio
@@ -138,6 +138,78 @@ def parse_transcript_file(cid: str) -> List[Dict]:
     items = []
     if not os.path.exists(t_path):
         return items
+
+    # Pre-index uploaded images with their mtimes
+    uploaded_files = []
+    if os.path.exists(up_dir):
+        for f in os.listdir(up_dir):
+            if f.startswith("media_") or f.endswith((".png", ".jpg", ".jpeg", ".webp")):
+                fp = os.path.join(up_dir, f)
+                try:
+                    uploaded_files.append({"filename": f, "mtime": os.path.getmtime(fp)})
+                except Exception:
+                    pass
+
+    try:
+        with open(t_path, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                if not line.strip(): continue
+                try:
+                    step = json.loads(line.strip())
+                    stype = step.get("type", "")
+                    source = step.get("source", "")
+                    content = step.get("content", "")
+                    tool_calls = step.get("tool_calls", [])
+                    created_at_str = step.get("created_at", "")
+                    
+                    if stype == "USER_INPUT" or (source == "USER_EXPLICIT" and content):
+                        u_text = clean_user_msg(content)
+                        u_imgs = extract_images_from_user_msg(content)
+                        
+                        # Match images by UTC timestamp accurately
+                        if created_at_str and uploaded_files:
+                            try:
+                                dt = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+                                ts_utc = dt.timestamp()
+                                for uf in uploaded_files:
+                                    if abs(uf["mtime"] - ts_utc) <= 8.0:
+                                        if uf["filename"] not in u_imgs:
+                                            u_imgs.append(uf["filename"])
+                            except Exception:
+                                pass
+                        
+                        if u_text and not u_text.startswith("Error: The stream was interrupted"):
+                            items.append({
+                                "type": "user",
+                                "text": u_text,
+                                "images": u_imgs,
+                                "session_id": cid
+                            })
+                            
+                    elif stype == "PLANNER_RESPONSE" or source == "MODEL":
+                        if tool_calls:
+                            for tc in tool_calls:
+                                fn_name = tc.get("name", tc.get("tool_name", "tool"))
+                                fn_args = tc.get("args", tc.get("arguments", {}))
+                                summary = fn_args.get("toolSummary", fn_args.get("toolAction", fn_name))
+                                items.append({"type": "tool_call", "name": fn_name, "summary": summary})
+                        
+                        text_ans = ""
+                        if isinstance(content, str):
+                            text_ans = content
+                        elif isinstance(content, list):
+                            for part in content:
+                                if isinstance(part, dict) and "text" in part:
+                                    text_ans += part["text"]
+                        text_ans = text_ans.strip()
+                        if text_ans and not text_ans.startswith("Created At:") and not text_ans.startswith("Completed At:") and not text_ans.startswith("The command exited with code"):
+                            items.append({"type": "assistant", "text": text_ans})
+                except Exception:
+                    pass
+    except Exception as e:
+        safe_print(f"Error: {e}")
+        
+    return items
 
     # Pre-index user uploaded images with their mtimes
     uploaded_files = []

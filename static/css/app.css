@@ -1342,3 +1342,57 @@ body, html {
     font-size: 13px;
     line-height: 1.6;
 }
+
+
+/* SIDEBAR PROJECT ACTION ICONS (KEBAB & PLUS) MATCHING SCREENSHOT 1 */
+.agy-project-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    cursor: pointer;
+    border-radius: 8px;
+    color: var(--text-sub);
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s ease;
+}
+.agy-project-header:hover {
+    background: #1f1f1f;
+    color: #ffffff;
+}
+
+.agy-project-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.agy-project-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.7;
+    transition: opacity 0.15s ease;
+}
+.agy-project-header:hover .agy-project-actions {
+    opacity: 1;
+}
+
+.btn-sidebar-opt {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    padding: 2px 6px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.12s;
+}
+.btn-sidebar-opt:hover {
+    color: #ffffff;
+    background: #2d2d2d;
+}
