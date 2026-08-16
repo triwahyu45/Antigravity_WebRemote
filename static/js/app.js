@@ -800,3 +800,79 @@ if (commentFab) {
 
 // Render queue pill on load
 renderCommentQueuePill();
+
+
+// --- 1:1 ARTIFACT CARDS & RIGHT SIDEBAR TABS ---
+let activeRightTab = 'plan';
+
+function switchRightTab(tab) {
+    activeRightTab = tab;
+    document.querySelectorAll('.agy-right-tab-item').forEach(el => {
+        el.classList.toggle('active', el.getAttribute('data-tab') === tab);
+    });
+    
+    const body = document.getElementById('right-artifact-body');
+    if (!body) return;
+    
+    body.innerHTML = '<div style="text-align: center; padding: 30px; color: var(--text-muted);"><i class="fas fa-spinner fa-spin"></i> Memuat dokumen...</div>';
+    
+    if (tab === 'plan') {
+        fetchArtifactAndRender('implementation_plan.md');
+    } else if (tab === 'walkthrough') {
+        fetchArtifactAndRender('walkthrough.md');
+    } else if (tab === 'diffs') {
+        loadDiffsIntoRightPanel();
+    }
+}
+
+async function fetchArtifactAndRender(filename) {
+    const body = document.getElementById('right-artifact-body');
+    try {
+        const res = await fetch(`${BASE_PATH}/api/artifacts/${currentSessionId}/${filename}`);
+        if (!res.ok) {
+            body.innerHTML = `<div style="color: var(--text-muted); text-align: center; padding: 40px 10px;">Dokumen <b>${filename}</b> belum tersedia untuk sesi ini.</div>`;
+            return;
+        }
+        const data = await res.json();
+        body.innerHTML = marked.parse(data.content || "");
+        body.querySelectorAll("pre code").forEach((el) => hljs.highlightElement(el));
+    } catch (e) {
+        body.innerHTML = `<div style="color: #f87171; padding: 20px;">Gagal memuat artifact: ${e.message}</div>`;
+    }
+}
+
+async function loadDiffsIntoRightPanel() {
+    const body = document.getElementById('right-artifact-body');
+    try {
+        const res = await fetch(`${BASE_PATH}/api/review/diff`);
+        const data = await res.json();
+        if (data.files && data.files.length > 0) {
+            let html = "";
+            data.files.forEach(f => {
+                html += `<div class="diff-file-card">
+                    <div class="diff-file-header"><span>📁 ${f.name}</span> <span class="macro-badge">${f.status}</span></div>
+                    <div class="diff-lines">`;
+                f.lines.forEach(l => {
+                    const cls = l.startsWith("+") ? "add" : (l.startsWith("-") ? "del" : "");
+                    html += `<div class="diff-line ${cls}">${escapeHtml(l)}</div>`;
+                });
+                html += `</div></div>`;
+            });
+            body.innerHTML = html;
+        } else {
+            body.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px;">Tidak ada diff perubahan saat ini.</div>`;
+        }
+    } catch (e) {
+        body.innerHTML = `<div style="color: #f87171; padding: 20px;">Gagal memuat diffs: ${e.message}</div>`;
+    }
+}
+
+function openArtifactInPanel(filename) {
+    const rightSidebar = document.getElementById('right-sidebar');
+    if (rightSidebar) {
+        rightSidebar.classList.add('open');
+        if (filename.includes('plan')) switchRightTab('plan');
+        else if (filename.includes('walkthrough')) switchRightTab('walkthrough');
+        else fetchArtifactAndRender(filename);
+    }
+}

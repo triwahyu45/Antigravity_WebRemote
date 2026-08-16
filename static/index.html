@@ -130,38 +130,24 @@
         </main>
 
         <!-- RIGHT SIDEBAR (Files Changed, Artifacts, Uploads) -->
+        <!-- 1:1 Desktop Right Sidebar Tabs & Markdown Viewer -->
         <aside class="agy-right-sidebar" id="right-sidebar">
-            <div class="right-top-nav">
-                <div class="nav-icons">
-                    <i class="fas fa-file-lines active"></i>
-                    <i class="fas fa-layer-group"></i>
+            <div class="agy-right-header-tabs" id="right-tabs-bar">
+                <div class="agy-right-tab-item active" data-tab="plan" onclick="switchRightTab('plan')">
+                    <i class="fas fa-file-alt" style="color: var(--cyan-accent);"></i> Implementation Plan
                 </div>
-                <div class="window-controls">
-                    <i class="fas fa-plus"></i>
-                    <i class="fas fa-expand"></i>
-                    <button class="icon-btn-close" id="btn-close-right"><i class="fas fa-xmark"></i></button>
+                <div class="agy-right-tab-item" data-tab="walkthrough" onclick="switchRightTab('walkthrough')">
+                    <i class="fas fa-book-open" style="color: #4ade80;"></i> Walkthrough
                 </div>
+                <div class="agy-right-tab-item" data-tab="diffs" onclick="switchRightTab('diffs')">
+                    <i class="fas fa-code-compare" style="color: #fbbf24;"></i> Diffs
+                </div>
+                <button class="btn-icon" id="btn-close-right" style="margin-left: auto;" onclick="toggleRightSidebar()"><i class="fas fa-times"></i></button>
             </div>
-
-            <div class="right-content" id="right-content">
-                <div class="right-section-pill">
-                    <span>Subagents <span class="count">0</span></span>
-                    <i class="fas fa-chevron-right"></i>
-                </div>
-
-                <div class="right-section-group">
-                    <div class="section-title">Files Changed <span class="count" id="count-files">18</span> <i class="fas fa-chevron-down"></i></div>
-                    <div class="file-list" id="files-changed-list"></div>
-                </div>
-
-                <div class="right-section-group">
-                    <div class="section-title">Artifacts <span class="count" id="count-artifacts">492</span> <i class="fas fa-chevron-down"></i></div>
-                    <div class="artifacts-list" id="artifacts-list"></div>
-                </div>
-
-                <div class="right-section-group">
-                    <div class="section-title">Uploads <span class="count" id="count-uploads">10</span> <i class="fas fa-chevron-down"></i></div>
-                    <div class="uploads-list" id="uploads-list"></div>
+            <div class="agy-right-artifact-content markdown-body" id="right-artifact-body">
+                <div style="color: var(--text-muted); text-align: center; padding: 40px 10px;">
+                    <i class="fas fa-file-alt fa-2x" style="margin-bottom: 12px; color: var(--cyan-accent);"></i><br>
+                    Pilih tab di atas atau klik card di chat untuk melihat dokumen.
                 </div>
             </div>
         </aside>
