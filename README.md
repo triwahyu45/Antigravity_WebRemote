@@ -84,3 +84,13 @@ This project is licensed under the [MIT License](LICENSE).
 <div align="center">
 Built with ❤️ for Google Antigravity
 </div>
+
+---
+
+## 💖 Support & Donations
+
+If you find this project helpful or inspiring, consider supporting its maintenance and further development!
+
+[![SociaBuzz](https://img.shields.io/badge/SociaBuzz-Support%20(Global%20%2F%20PayPal%20%2F%20QRIS)-2563eb?style=for-the-badge&logo=cashapp&logoColor=white)](https://sociabuzz.com/triwahyu45)
+[![Saweria](https://img.shields.io/badge/Saweria-Dukung%20Kreator-fa709a?style=for-the-badge&logo=coffeescript&logoColor=black)](https://saweria.co/triwahyu45)
+[![Trakteer](https://img.shields.io/badge/Trakteer-Traktir%20Kopi-be123c?style=for-the-badge&logo=trakteer&logoColor=white)](https://trakteer.id/triwahyu45)

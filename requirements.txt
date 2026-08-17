@@ -4,3 +4,7 @@ psutil>=5.9.8
 requests>=2.31.0
 aiofiles>=23.2.1
 zeroconf>=0.131.0
+pywebpush>=1.14.0
+cryptography>=41.0.0
+py-vapid>=1.9.4
+http-ece>=1.2.1
